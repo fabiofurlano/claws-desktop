@@ -96,12 +96,40 @@ export function initDatabase(): Database.Database {
             created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
         );
 
+        -- MCP Connections (Composio and future integrations)
+        CREATE TABLE IF NOT EXISTS mcp_connections (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            type TEXT NOT NULL DEFAULT 'composio',
+            api_key TEXT,  -- Encrypted in production
+            is_enabled INTEGER NOT NULL DEFAULT 1,
+            config TEXT,   -- JSON for additional settings
+            created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000),
+            last_used INTEGER
+        );
+
+        -- Connected Tools (tools enabled per connection)
+        CREATE TABLE IF NOT EXISTS connected_tools (
+            id TEXT PRIMARY KEY,
+            connection_id TEXT NOT NULL,
+            tool_name TEXT NOT NULL,
+            tool_slug TEXT NOT NULL,
+            is_enabled INTEGER NOT NULL DEFAULT 1,
+            config TEXT,
+            created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000),
+            FOREIGN KEY (connection_id) REFERENCES mcp_connections(id) ON DELETE CASCADE
+        );
+
         -- Indices for fast lookups
         CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id);
         CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON messages(timestamp);
         CREATE INDEX IF NOT EXISTS idx_patterns_type ON patterns(type);
         CREATE INDEX IF NOT EXISTS idx_conversations_mode ON conversations(mode);
         CREATE INDEX IF NOT EXISTS idx_conversations_updated ON conversations(updated_at);
+
+        -- Index for fast tool lookup
+        CREATE INDEX IF NOT EXISTS idx_connected_tools_connection ON connected_tools(connection_id);
+        CREATE INDEX IF NOT EXISTS idx_connected_tools_enabled ON connected_tools(is_enabled);
     `);
 
     return db;
@@ -246,4 +274,102 @@ export function getMemoryStats() {
         conversations: conversations.count,
         messages: messages.count,
     };
+}
+
+// ==================== MCP CONNECTIONS ====================
+
+export function createMcpConnection(connection: {
+    id: string;
+    name: string;
+    type?: string;
+    api_key?: string;
+    config?: string;
+}) {
+    return getDatabase()
+        .prepare(
+            'INSERT INTO mcp_connections (id, name, type, api_key, config) VALUES (?, ?, ?, ?, ?)'
+        )
+        .run(connection.id, connection.name, connection.type || 'composio', connection.api_key || null, connection.config || null);
+}
+
+export function getMcpConnections() {
+    return getDatabase()
+        .prepare('SELECT * FROM mcp_connections ORDER BY created_at DESC')
+        .all() as Array<{
+            id: string;
+            name: string;
+            type: string;
+            api_key: string | null;
+            is_enabled: number;
+            config: string | null;
+            created_at: number;
+            last_used: number | null;
+        }>;
+}
+
+export function getMcpConnection(id: string) {
+    return getDatabase()
+        .prepare('SELECT * FROM mcp_connections WHERE id = ?')
+        .get(id);
+}
+
+export function updateMcpConnection(id: string, updates: { api_key?: string; is_enabled?: number; config?: string }) {
+    const sets: string[] = [];
+    const values: (string | number | null)[] = [];
+
+    if (updates.api_key !== undefined) { sets.push('api_key = ?'); values.push(updates.api_key); }
+    if (updates.is_enabled !== undefined) { sets.push('is_enabled = ?'); values.push(updates.is_enabled); }
+    if (updates.config !== undefined) { sets.push('config = ?'); values.push(updates.config); }
+
+    if (sets.length === 0) return { changes: 0 };
+
+    values.push(id);
+    return getDatabase()
+        .prepare(`UPDATE mcp_connections SET ${sets.join(', ')} WHERE id = ?`)
+        .run(...values);
+}
+
+export function deleteMcpConnection(id: string) {
+    return getDatabase()
+        .prepare('DELETE FROM mcp_connections WHERE id = ?')
+        .run(id);
+}
+
+// ==================== CONNECTED TOOLS ====================
+
+export function addConnectedTool(tool: {
+    id: string;
+    connection_id: string;
+    tool_name: string;
+    tool_slug: string;
+    config?: string;
+}) {
+    return getDatabase()
+        .prepare(
+            'INSERT INTO connected_tools (id, connection_id, tool_name, tool_slug, config) VALUES (?, ?, ?, ?, ?)'
+        )
+        .run(tool.id, tool.connection_id, tool.tool_name, tool.tool_slug, tool.config || null);
+}
+
+export function getConnectedTools(connectionId?: string) {
+    if (connectionId) {
+        return getDatabase()
+            .prepare('SELECT * FROM connected_tools WHERE connection_id = ? AND is_enabled = 1')
+            .all(connectionId);
+    }
+    return getDatabase()
+        .prepare('SELECT * FROM connected_tools WHERE is_enabled = 1')
+        .all();
+}
+
+export function removeConnectedTool(id: string) {
+    return getDatabase()
+        .prepare('DELETE FROM connected_tools WHERE id = ?')
+        .run(id);
+}
+
+export function toggleConnectedTool(id: string, is_enabled: number) {
+    return getDatabase()
+        .prepare('UPDATE connected_tools SET is_enabled = ? WHERE id = ?')
+        .run(is_enabled, id);
 }
