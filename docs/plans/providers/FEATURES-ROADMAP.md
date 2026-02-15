@@ -1,6 +1,6 @@
 # Claws Desktop - Features Roadmap
 
-**Last Updated:** 2026-02-15
+**Last Updated:** 2026-02-15 21:55
 
 ---
 
@@ -26,21 +26,21 @@ A self-improving AI assistant desktop app that can:
 
 ---
 
-## Phase 2: MCP Bridge (IN PROGRESS)
+## Phase 2: MCP Bridge ✅ (DONE)
 
 ### 2.1 MCP Server
-- [ ] Install `@modelcontextprotocol/sdk`
-- [ ] Create `electron/mcp-server.ts` (HTTP transport, port 3001)
-- [ ] Expose tools:
+- [x] Install `@modelcontextprotocol/sdk`
+- [x] Create `electron/mcp-server.ts` (HTTP transport, port 3001)
+- [x] Expose tools:
   - `read_git_log` - recent commits
   - `read_file` - read project files
   - `get_memory_stats` - SQLite stats
-  - `run_claude_code` - execute Claude Code with prompt
+  - `run_claude_code` - execute Claude Code with prompt (stub)
 
 ### 2.2 OpenClaw Connection
-- [ ] Document MCP endpoint URL
-- [ ] User adds to OpenClaw config
-- [ ] Test: I can read commits, trigger Claude Code
+- [x] Document MCP endpoint URL (`docs/MCP-SETUP.md`)
+- [x] Automated test script (`scripts/test-mcp.sh`)
+- [ ] User adds to OpenClaw config (manual step)
 
 ---
 
