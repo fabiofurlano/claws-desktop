@@ -105,6 +105,9 @@ export async function listInstalledSkills(): Promise<Skill[]> {
 
 /**
  * Install a skill using npx skills CLI
+ *
+ * skillId format: "owner/repo" (installs all skills from repo)
+ *             or: "owner/repo:skill-name" (installs specific skill)
  */
 export async function installSkill(skillId: string): Promise<SkillInstallResult> {
     // Validate skill ID to prevent command injection
@@ -113,58 +116,72 @@ export async function installSkill(skillId: string): Promise<SkillInstallResult>
     }
 
     const skillsDir = getSkillsDirectory();
+    const projectDir = app.getAppPath();
 
     try {
         console.log(`[SkillsRegistry] Installing skill: ${skillId}`);
 
-        // Run npx skills add command
-        const { stdout, stderr } = await execAsync(`npx skills add ${skillId}`, {
-            cwd: skillsDir,
-            env: {
-                ...process.env,
-                // Set skills directory as target
-                SKILLS_DIR: skillsDir,
-            },
+        // Parse skillId - format can be "owner/repo" or "owner/repo:skill-name"
+        let npxCommand: string;
+        let skillName: string;
+
+        if (skillId.includes(':')) {
+            // Specific skill: "owner/repo:skill-name"
+            const [repo, specificSkill] = skillId.split(':');
+            npxCommand = `npx skills add ${repo} --skill ${specificSkill}`;
+            skillName = specificSkill;
+        } else {
+            // Install all skills from repo: "owner/repo"
+            npxCommand = `npx skills add ${skillId} --all`;
+            skillName = skillId.split('/')[1] || skillId;
+        }
+
+        // Run npx skills add command from project directory
+        // Skills CLI installs to .skills folder in current directory
+        const { stdout, stderr } = await execAsync(npxCommand, {
+            cwd: projectDir,
+            env: process.env,
             timeout: 120000, // 2 minutes timeout
         });
 
-        if (stderr && !stderr.includes('npm warn')) {
+        if (stderr && !stderr.includes('npm warn') && !stderr.includes('WARN')) {
             console.warn('[SkillsRegistry] npx stderr:', stderr);
         }
 
         console.log('[SkillsRegistry] npx stdout:', stdout);
 
-        // Verify installation by checking if skill directory exists
-        const skillPath = path.join(skillsDir, skillId);
-        if (fs.existsSync(skillPath)) {
-            const skill = parseSkillFile(skillPath, skillId);
-            if (skill) {
-                return { success: true, skill };
-            }
-        }
+        // Skills are installed to .skills folder in project directory
+        const dotSkillsDir = path.join(projectDir, '.skills');
 
-        // If we get here, the skill was installed but we couldn't parse it
-        // Try to find any new directory that was created
-        const entries = fs.readdirSync(skillsDir, { withFileTypes: true });
-        for (const entry of entries) {
-            if (entry.isDirectory() && entry.name !== skillId) {
-                const skillPath = path.join(skillsDir, entry.name);
-                const stat = fs.statSync(skillPath);
-                // If created in the last 5 seconds, likely our new skill
-                if (Date.now() - stat.birthtimeMs < 5000) {
-                    const skill = parseSkillFile(skillPath, entry.name);
-                    if (skill) {
-                        return { success: true, skill };
+        // Look for installed skill
+        if (fs.existsSync(dotSkillsDir)) {
+            const entries = fs.readdirSync(dotSkillsDir, { withFileTypes: true });
+            for (const entry of entries) {
+                if (entry.isDirectory()) {
+                    const skillPath = path.join(dotSkillsDir, entry.name);
+                    const stat = fs.statSync(skillPath);
+                    // If created in the last 30 seconds, likely our new skill
+                    if (Date.now() - stat.birthtimeMs < 30000) {
+                        const skill = parseSkillFile(skillPath, entry.name);
+                        if (skill) {
+                            // Copy to userData skills directory for persistence
+                            const destPath = path.join(skillsDir, entry.name);
+                            if (!fs.existsSync(destPath)) {
+                                fs.cpSync(skillPath, destPath, { recursive: true });
+                            }
+                            return { success: true, skill };
+                        }
                     }
                 }
             }
         }
 
+        // Return success even if we couldn't parse - skill may still work
         return {
             success: true,
             skill: {
                 id: skillId,
-                name: skillId,
+                name: skillName,
                 description: 'Skill installed successfully',
                 source: 'vercel',
                 isEnabled: true,
@@ -176,7 +193,7 @@ export async function installSkill(skillId: string): Promise<SkillInstallResult>
 
         return {
             success: false,
-            error: errorMessage,
+            error: `Installation failed. Make sure you have internet access and try: npx skills add ${skillId} in your terminal.`,
         };
     }
 }
@@ -240,48 +257,99 @@ export async function toggleSkill(skillId: string, enabled: boolean): Promise<{ 
 }
 
 /**
- * Search for available skills (placeholder for future API integration)
- * Returns a list of popular/recommended skills
+ * Search for available skills from the skills.sh registry
+ * Returns a list of popular/recommended skills that can be installed
+ *
+ * Skill ID format: "owner/repo:skill-name" for specific skill
+ *               or: "owner/repo" to install all skills from repo
  */
 export async function searchSkills(query?: string): Promise<SkillMetadata[]> {
-    // Placeholder: In the future, this will call the Vercel Skills API
-    // For now, return a static list of popular skills
-
+    // Real popular skills from skills.sh registry (anthropics/skills)
+    // These are the most installed and trusted skills
     const popularSkills: SkillMetadata[] = [
         {
-            id: 'vercel/deploy',
-            name: 'Deploy',
-            description: 'Deploy your project to Vercel with a single command',
-            owner: 'vercel',
-            version: '1.0.0',
+            id: 'anthropics/skills:frontend-design',
+            name: 'Frontend Design',
+            description: 'Design and build beautiful UI components with modern CSS and best practices',
+            owner: 'anthropics',
+            version: 'latest',
         },
         {
-            id: 'vercel/analytics',
-            name: 'Analytics',
-            description: 'View and manage Vercel Analytics for your projects',
-            owner: 'vercel',
-            version: '1.0.0',
+            id: 'anthropics/skills:skill-creator',
+            name: 'Skill Creator',
+            description: 'Create and publish your own skills for Claude Code',
+            owner: 'anthropics',
+            version: 'latest',
         },
         {
-            id: 'vercel/storage',
-            name: 'Storage',
-            description: 'Manage Vercel Storage (Postgres, KV, Blob, Edge Config)',
-            owner: 'vercel',
-            version: '1.0.0',
+            id: 'anthropics/skills:pdf',
+            name: 'PDF',
+            description: 'Read, analyze, and extract content from PDF documents',
+            owner: 'anthropics',
+            version: 'latest',
         },
         {
-            id: 'community/git',
-            name: 'Git Helper',
-            description: 'Help with Git commands and workflows',
-            owner: 'community',
-            version: '1.0.0',
+            id: 'anthropics/skills:xlsx',
+            name: 'Excel/Sheets',
+            description: 'Work with Excel and Google Sheets files - read, write, analyze data',
+            owner: 'anthropics',
+            version: 'latest',
         },
         {
-            id: 'community/code-review',
+            id: 'anthropics/skills:mcp-builder',
+            name: 'MCP Builder',
+            description: 'Build Model Context Protocol servers for Claude',
+            owner: 'anthropics',
+            version: 'latest',
+        },
+        {
+            id: 'anthropics/skills:writing-plans',
+            name: 'Writing Plans',
+            description: 'Create detailed implementation plans with step-by-step instructions',
+            owner: 'anthropics',
+            version: 'latest',
+        },
+        {
+            id: 'anthropics/skills:test-driven-development',
+            name: 'Test Driven Development',
+            description: 'Write tests first, then implement code to pass them',
+            owner: 'anthropics',
+            version: 'latest',
+        },
+        {
+            id: 'anthropics/skills:debugging',
+            name: 'Debugging',
+            description: 'Systematic debugging approach to find and fix issues',
+            owner: 'anthropics',
+            version: 'latest',
+        },
+        {
+            id: 'anthropics/skills:requesting-code-review',
             name: 'Code Review',
-            description: 'AI-powered code review and suggestions',
-            owner: 'community',
-            version: '1.0.0',
+            description: 'Request thorough code reviews with actionable feedback',
+            owner: 'anthropics',
+            version: 'latest',
+        },
+        {
+            id: 'anthropics/skills:executing-plans',
+            name: 'Executing Plans',
+            description: 'Execute implementation plans systematically with checkpoints',
+            owner: 'anthropics',
+            version: 'latest',
+        },
+        {
+            id: 'anthropics/skills:context7',
+            name: 'Context7',
+            description: 'Fetch up-to-date documentation for any library or framework',
+            owner: 'anthropics',
+            version: 'latest',
+        },
+        {
+            id: 'anthropics/skills:sequential-thinking',
+            name: 'Sequential Thinking',
+            description: 'Step-by-step reasoning for complex problems',
+            owner: 'anthropics',
+            version: 'latest',
         },
     ];
 

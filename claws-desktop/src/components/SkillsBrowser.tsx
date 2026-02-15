@@ -147,6 +147,12 @@ export const SkillsBrowser: React.FC<SkillsBrowserProps> = ({
 
                 {/* Search Form */}
                 <form onSubmit={handleSearch} className="p-4 border-b border-gray-700">
+                    <div className="mb-3 p-3 bg-blue-900/20 border border-blue-800/30 rounded-lg">
+                        <p className="text-xs text-blue-300">
+                            <strong>Skills</strong> add new capabilities to your AI assistant.
+                            Click "Install" to add a skill - no coding required!
+                        </p>
+                    </div>
                     <div className="flex gap-2">
                         <input
                             type="text"
@@ -210,7 +216,7 @@ export const SkillsBrowser: React.FC<SkillsBrowserProps> = ({
                                                     <h3 className="text-sm font-medium text-gray-100 truncate">
                                                         {skill.name}
                                                     </h3>
-                                                    {skill.version && (
+                                                    {skill.version && skill.version !== 'latest' && (
                                                         <span className="text-xs text-gray-500 bg-gray-700 px-1.5 py-0.5 rounded">
                                                             v{skill.version}
                                                         </span>
@@ -219,9 +225,15 @@ export const SkillsBrowser: React.FC<SkillsBrowserProps> = ({
                                                 <p className="text-xs text-gray-400 mb-2 line-clamp-2">
                                                     {skill.description}
                                                 </p>
-                                                <p className="text-xs text-gray-500">
-                                                    by <span className="text-gray-400">{skill.owner}</span>
-                                                </p>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xs text-gray-500">
+                                                        by <span className="text-gray-400">{skill.owner}</span>
+                                                    </span>
+                                                    <span className="text-gray-600">•</span>
+                                                    <span className="text-xs text-gray-600" title={`Skill ID: ${skill.id}`}>
+                                                        {skill.id.split(':')[1] || skill.id.split('/')[1] || skill.id}
+                                                    </span>
+                                                </div>
                                             </div>
 
                                             <button
