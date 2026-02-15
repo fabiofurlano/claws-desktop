@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "description": "Personal AI assistant with two modes",
-  "main": "dist-electron/main.js",
+  "main": "dist-electron/electron/main.js",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build && npm run build:electron",
@@ -24,6 +24,7 @@
     "zustand": "^4.5.0"
   },
   "devDependencies": {
+    "@electron/rebuild": "^3.7.2",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20.11.0",
     "@types/react": "^18.2.0",
