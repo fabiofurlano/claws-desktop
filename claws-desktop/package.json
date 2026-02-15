@@ -2,7 +2,6 @@
   "name": "claws-desktop",
   "version": "0.1.0",
   "private": true,
-  "type": "module",
   "description": "Personal AI assistant with two modes",
   "main": "dist-electron/electron/main.js",
   "scripts": {

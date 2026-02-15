@@ -97,17 +97,30 @@ export async function sendToAI(
 /**
  * Test if a provider connection is working by sending a minimal request.
  */
-export async function testProviderConnection(provider: ProviderConfig): Promise<boolean> {
+export async function testProviderConnection(provider: ProviderConfig): Promise<{ success: boolean; error?: string }> {
     try {
         await sendToAI(
             [{ id: 'test', role: 'user', content: 'Hi', timestamp: Date.now() }],
             'chat',
             { ...provider, model: provider.model || 'gpt-3.5-turbo' } // ensure model is set
         );
-        return true;
-    } catch (e) {
+        return { success: true };
+    } catch (e: any) {
         console.error('Connection test failed:', e);
-        return false;
+        // Extract meaningful error message
+        let errorMessage = e.message || 'Unknown error occurred';
+
+        if (errorMessage.includes('401')) {
+            errorMessage = 'Authentication failed (401). Please check your API key.';
+        } else if (errorMessage.includes('404')) {
+            errorMessage = 'Model or endpoint not found (404). Check provider settings.';
+        } else if (errorMessage.includes('429')) {
+            errorMessage = 'Rate limit exceeded (429). Please try again later.';
+        } else if (errorMessage.includes('Failed to fetch')) {
+            errorMessage = 'Network error. Check your internet connection and proxy settings.';
+        }
+
+        return { success: false, error: errorMessage };
     }
 }
 

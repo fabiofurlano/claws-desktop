@@ -22,6 +22,31 @@ interface ProviderState {
 
 const generateId = (): string => `provider-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
 
+// Migration: Fix old provider configs (wrong OpenRouter baseUrl, Z.AI model case)
+const PROVIDER_STORE_VERSION = 2;
+
+const migrateProviderStore = (persistedState: unknown, _version: number): unknown => {
+    if (!persistedState || typeof persistedState !== 'object') return persistedState;
+    const state = persistedState as { providers?: ProviderConfig[] };
+    if (!state.providers) return persistedState;
+
+    const providers = state.providers.map((p) => {
+        // Fix OpenRouter baseUrl (was sometimes wrong domain)
+        if (p.name?.toLowerCase().includes('openrouter') && p.baseUrl) {
+            if (!p.baseUrl.includes('openrouter.ai')) {
+                p.baseUrl = 'https://openrouter.ai/api/v1';
+            }
+        }
+        // Fix Z.AI model case sensitivity (must be lowercase)
+        if (p.baseUrl?.includes('api.z.ai') && p.model) {
+            p.model = p.model.toLowerCase();
+        }
+        return p;
+    });
+
+    return { ...state, providers };
+};
+
 export const useProviderStore = create<ProviderState>()(
     persist(
         (set, get) => ({
@@ -72,7 +97,9 @@ export const useProviderStore = create<ProviderState>()(
         }),
         {
             name: 'claws-providers',
+            version: PROVIDER_STORE_VERSION,
             storage: createJSONStorage(() => localStorage),
+            migrate: migrateProviderStore,
         }
     )
 );

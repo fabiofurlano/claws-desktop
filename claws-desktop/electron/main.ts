@@ -1,6 +1,5 @@
 import { app, BrowserWindow, ipcMain, nativeTheme } from 'electron';
 import * as path from 'path';
-import { fileURLToPath } from 'url';
 import {
     initDatabase, closeDatabase,
     createConversation, getConversation, listConversations, deleteConversation,
@@ -9,9 +8,9 @@ import {
     setPreference, getPreferences,
     setProfileField, getProfile,
     getMemoryStats,
-} from './database.js';
+} from './database';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// In CommonJS, __dirname is automatically available
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -79,7 +78,7 @@ nativeTheme.on('updated', () => {
 });
 
 // IPC handlers — AI
-import { streamThinking } from './ai-service.js';
+import { streamThinking } from './ai-service';
 
 ipcMain.handle('ai:streamCompletion', (event, request) => {
     const requestId = Math.random().toString(36).substring(7);

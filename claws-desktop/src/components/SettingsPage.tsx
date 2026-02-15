@@ -1,9 +1,44 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useProviders, useActiveProviderId, useProviderActions, type ProviderConfig } from '../stores/provider-store';
 import { DEFAULT_PROVIDERS, testProviderConnection } from '../utils/aiProvider';
 import { useMode } from '../stores/mode-store';
 
 type SettingsTab = 'providers' | 'appearance' | 'data' | 'about';
+
+// Model suggestions per provider type
+const MODEL_SUGGESTIONS: Record<string, { models: string[]; hint: string }> = {
+    zai: {
+        models: ['glm-4.7', 'glm-4-flash', 'glm-5'],
+        hint: '⚠️ MUST be lowercase for Z.AI'
+    },
+    zaiGlobal: {
+        models: ['glm-4.7', 'glm-4-flash', 'glm-5'],
+        hint: '⚠️ MUST be lowercase for Z.AI'
+    },
+    openrouter: {
+        models: ['openai/gpt-4o-mini', 'anthropic/claude-3.5-sonnet', 'google/gemini-pro', 'meta-llama/llama-3-70b'],
+        hint: 'Format: provider/model-name'
+    },
+    openai: {
+        models: ['gpt-4o', 'gpt-4-turbo', 'gpt-3.5-turbo'],
+        hint: 'Standard OpenAI model names'
+    },
+    anthropic: {
+        models: ['claude-3-5-sonnet-20240620', 'claude-3-opus-20240229'],
+        hint: 'Include version date'
+    }
+};
+
+// Get provider key for suggestions
+// Get provider key for suggestions
+function getProviderKey(baseUrl: string): string {
+    if (baseUrl.includes('api.z.ai/api/coding')) return 'zai';
+    if (baseUrl.includes('api.z.ai')) return 'zaiGlobal';
+    if (baseUrl.includes('openrouter')) return 'openrouter';
+    if (baseUrl.includes('openai')) return 'openai';
+    if (baseUrl.includes('anthropic')) return 'anthropic';
+    return '';
+}
 
 export function SettingsPage({ onClose }: { onClose: () => void }) {
     const [activeTab, setActiveTab] = useState<SettingsTab>('providers');
@@ -88,7 +123,7 @@ function ProvidersTab() {
     const isAgent = mode === 'agent';
 
     const [showAddForm, setShowAddForm] = useState(false);
-    const [testResults, setTestResults] = useState<Record<string, 'testing' | 'success' | 'failed'>>({});
+    const [testResults, setTestResults] = useState<Record<string, { status: 'testing' | 'success' | 'failed'; error?: string }>>({});
 
     const handleAddPreset = (preset: keyof typeof DEFAULT_PROVIDERS) => {
         addProvider({ ...DEFAULT_PROVIDERS[preset] });
@@ -96,17 +131,24 @@ function ProvidersTab() {
     };
 
     const handleTestConnection = async (provider: ProviderConfig) => {
-        setTestResults((prev) => ({ ...prev, [provider.id]: 'testing' }));
-        const success = await testProviderConnection(provider);
-        setTestResults((prev) => ({ ...prev, [provider.id]: success ? 'success' : 'failed' }));
-        // Clear result after 3 seconds
+        setTestResults((prev) => ({ ...prev, [provider.id]: { status: 'testing' } }));
+        const result = await testProviderConnection(provider);
+        setTestResults((prev) => ({
+            ...prev,
+            [provider.id]: {
+                status: result.success ? 'success' : 'failed',
+                error: result.error
+            }
+        }));
+
+        // Clear result after 5 seconds (longer to read error)
         setTimeout(() => {
             setTestResults((prev) => {
                 const next = { ...prev };
                 delete next[provider.id];
                 return next;
             });
-        }, 3000);
+        }, 5000);
     };
 
     return (
@@ -196,7 +238,7 @@ function ProviderCard({
 }: {
     provider: ProviderConfig;
     isActive: boolean;
-    testResult?: 'testing' | 'success' | 'failed';
+    testResult?: { status: 'testing' | 'success' | 'failed'; error?: string };
     onUpdate: (updates: Partial<ProviderConfig>) => void;
     onRemove: () => void;
     onSetActive: () => void;
@@ -204,19 +246,54 @@ function ProviderCard({
     isAgent: boolean;
 }) {
     const [showApiKey, setShowApiKey] = useState(false);
+    const [showModelDropdown, setShowModelDropdown] = useState(false);
+    const modelInputRef = useRef<HTMLInputElement>(null);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+
+    const providerKey = getProviderKey(provider.baseUrl);
+    const suggestions = MODEL_SUGGESTIONS[providerKey];
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+                setShowModelDropdown(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     return (
-        <div className={`rounded-xl border p-4 transition-colors ${isActive
-            ? isAgent
-                ? 'border-agent-primary/50 bg-agent-primary/5'
-                : 'border-chat-primary/50 bg-chat-primary/5'
-            : isAgent
-                ? 'border-agent-border bg-agent-surfaceAlt'
-                : 'border-chat-border bg-gray-50'
-            }`}>
+        <div
+            onClick={!isActive ? onSetActive : undefined}
+            className={`rounded-xl border p-4 transition-all cursor-pointer ${isActive
+                ? isAgent
+                    ? 'border-agent-primary ring-2 ring-agent-primary/30 bg-agent-primary/5'
+                    : 'border-chat-primary ring-2 ring-chat-primary/30 bg-chat-primary/5'
+                : isAgent
+                    ? 'border-agent-border bg-agent-surfaceAlt hover:border-agent-primary/50'
+                    : 'border-chat-border bg-gray-50 hover:border-chat-primary/50'
+                }`}
+        >
             {/* Provider header */}
             <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
+                    {/* Radio/Check indicator */}
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${isActive
+                        ? isAgent
+                            ? 'border-agent-primary bg-agent-primary'
+                            : 'border-chat-primary bg-chat-primary'
+                        : isAgent
+                            ? 'border-agent-muted'
+                            : 'border-chat-muted'
+                        }`}>
+                        {isActive && (
+                            <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                        )}
+                    </div>
                     <span className="text-base font-semibold">{provider.name}</span>
                     {isActive && (
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isAgent ? 'bg-agent-primary/20 text-agent-primary' : 'bg-chat-primary/20 text-chat-primary'
@@ -225,18 +302,7 @@ function ProviderCard({
                         </span>
                     )}
                 </div>
-                <div className="flex items-center gap-2">
-                    {!isActive && (
-                        <button
-                            onClick={onSetActive}
-                            className={`text-xs px-2.5 py-1 rounded-lg transition-colors ${isAgent
-                                ? 'text-agent-muted hover:bg-agent-surface'
-                                : 'text-chat-muted hover:bg-white'
-                                }`}
-                        >
-                            Set Active
-                        </button>
-                    )}
+                <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                     <button
                         onClick={onRemove}
                         className="text-xs px-2.5 py-1 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors"
@@ -247,7 +313,7 @@ function ProviderCard({
             </div>
 
             {/* API Key */}
-            <div className="space-y-2.5">
+            <div className="space-y-2.5" onClick={(e) => e.stopPropagation()}>
                 <div>
                     <label className={`text-xs font-medium ${isAgent ? 'text-agent-muted' : 'text-chat-muted'}`}>
                         API Key
@@ -275,20 +341,56 @@ function ProviderCard({
                     </div>
                 </div>
 
-                {/* Model */}
-                <div>
-                    <label className={`text-xs font-medium ${isAgent ? 'text-agent-muted' : 'text-chat-muted'}`}>
+                {/* Model with dropdown */}
+                <div className="relative" ref={dropdownRef}>
+                    <label className={`text-xs font-medium flex items-center gap-1 ${isAgent ? 'text-agent-muted' : 'text-chat-muted'}`}>
                         Model
+                        {suggestions && (
+                            <span className="text-[10px] opacity-70">(click for suggestions)</span>
+                        )}
                     </label>
                     <input
+                        ref={modelInputRef}
                         type="text"
                         value={provider.model}
                         onChange={(e) => onUpdate({ model: e.target.value })}
+                        onFocus={() => setShowModelDropdown(true)}
                         className={`w-full mt-1 px-3 py-1.5 rounded-lg text-sm border outline-none transition-colors ${isAgent
                             ? 'bg-agent-bg border-agent-border text-agent-text focus:border-agent-primary'
                             : 'bg-white border-chat-border text-chat-text focus:border-chat-primary'
                             }`}
                     />
+                    {/* Model dropdown */}
+                    {showModelDropdown && suggestions && (
+                        <div className={`absolute z-10 w-full mt-1 rounded-lg border shadow-lg overflow-hidden ${isAgent
+                            ? 'bg-agent-surface border-agent-border'
+                            : 'bg-white border-chat-border'
+                            }`}>
+                            {suggestions.models.map((model) => (
+                                <button
+                                    key={model}
+                                    onClick={() => {
+                                        onUpdate({ model });
+                                        setShowModelDropdown(false);
+                                    }}
+                                    className={`w-full px-3 py-2 text-left text-sm hover:bg-opacity-50 transition-colors ${isAgent
+                                        ? 'text-agent-text hover:bg-agent-primary/20'
+                                        : 'text-chat-text hover:bg-chat-primary/20'
+                                        }`}
+                                >
+                                    {model}
+                                </button>
+                            ))}
+                            {suggestions.hint && (
+                                <div className={`px-3 py-2 text-xs border-t ${isAgent
+                                    ? 'text-agent-muted border-agent-border bg-agent-surfaceAlt'
+                                    : 'text-chat-muted border-chat-border bg-gray-50'
+                                    }`}>
+                                    {suggestions.hint}
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 {/* Base URL */}
@@ -308,22 +410,29 @@ function ProviderCard({
                 </div>
 
                 {/* Test Connection button */}
-                <div className="flex items-center gap-3 pt-1">
-                    <button
-                        onClick={onTest}
-                        disabled={!provider.apiKey || testResult === 'testing'}
-                        className={`px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all disabled:opacity-40 ${isAgent
-                            ? 'bg-agent-primary/20 text-agent-primary hover:bg-agent-primary/30'
-                            : 'bg-chat-primary/10 text-chat-primary hover:bg-chat-primary/20'
-                            }`}
-                    >
-                        {testResult === 'testing' ? '⏳ Testing...' : '🔌 Test Connection'}
-                    </button>
-                    {testResult === 'success' && (
-                        <span className="text-sm text-green-500 font-medium animate-fade-in">✅ Connected!</span>
-                    )}
-                    {testResult === 'failed' && (
-                        <span className="text-sm text-red-400 font-medium animate-fade-in">❌ Failed</span>
+                <div className="flex flex-col gap-1 pt-1">
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={onTest}
+                            disabled={!provider.apiKey || testResult?.status === 'testing'}
+                            className={`px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all disabled:opacity-40 ${isAgent
+                                ? 'bg-agent-primary/20 text-agent-primary hover:bg-agent-primary/30'
+                                : 'bg-chat-primary/10 text-chat-primary hover:bg-chat-primary/20'
+                                }`}
+                        >
+                            {testResult?.status === 'testing' ? '⏳ Testing...' : '🔌 Test Connection'}
+                        </button>
+                        {testResult?.status === 'success' && (
+                            <span className="text-sm text-green-500 font-medium animate-fade-in">✅ Connected!</span>
+                        )}
+                        {testResult?.status === 'failed' && (
+                            <span className="text-sm text-red-400 font-medium animate-fade-in">❌ Failed</span>
+                        )}
+                    </div>
+                    {testResult?.status === 'failed' && testResult.error && (
+                        <div className="text-xs text-red-500 mt-1 pl-1">
+                            {testResult.error}
+                        </div>
                     )}
                 </div>
             </div>
