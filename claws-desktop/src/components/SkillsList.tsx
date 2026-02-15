@@ -15,7 +15,9 @@ interface LocalSkill {
 export const SkillsList: React.FC = () => {
     const skills = useAgentStore((state) => state.skills) as LocalSkill[];
     const toggleSkill = useAgentStore((state) => state.toggleSkill);
+    const uninstallSkill = useAgentStore((state) => state.uninstallSkill);
     const [showBrowser, setShowBrowser] = useState(false);
+    const [deletingId, setDeletingId] = useState<string | null>(null);
 
     // Get source badge color
     const getSourceBadge = (source?: string) => {
@@ -29,9 +31,39 @@ export const SkillsList: React.FC = () => {
         }
     };
 
-    // Handle skill installed from browser
+    // Handle skill installed from browser - add to store
     const handleSkillInstalled = (skill: UnifiedSkill) => {
         console.log('Skill installed:', skill.name);
+        // Add the skill to the store if not already there
+        const exists = skills.some(s => s.id === skill.id);
+        if (!exists) {
+            // Force a re-read of skills from the backend
+            window.electron.skills.list().then((installedSkills) => {
+                // Find the newly installed skill and add it
+                const newSkill = installedSkills.find(s => s.id === skill.id);
+                if (newSkill) {
+                    useAgentStore.setState(state => ({
+                        skills: [...state.skills.filter(s => s.id !== skill.id), newSkill]
+                    }));
+                }
+            });
+        }
+    };
+
+    // Handle skill uninstall
+    const handleUninstall = async (skillId: string, skillName: string) => {
+        if (!confirm(`Remove "${skillName}"? This cannot be undone.`)) {
+            return;
+        }
+
+        setDeletingId(skillId);
+        try {
+            await uninstallSkill(skillId);
+        } catch (error) {
+            console.error('Failed to uninstall skill:', error);
+        } finally {
+            setDeletingId(null);
+        }
     };
 
     return (
@@ -72,23 +104,47 @@ export const SkillsList: React.FC = () => {
                         </span>
                     </div>
 
-                    <button
-                        onClick={() => toggleSkill(skill.id)}
-                        className={`
-                            relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900
-                            ${skill.isEnabled ? 'bg-blue-600' : 'bg-gray-600'}
-                        `}
-                        role="switch"
-                        aria-checked={skill.isEnabled}
-                    >
-                        <span className="sr-only">Enable {skill.name}</span>
-                        <span
+                    <div className="flex items-center gap-2">
+                        {/* Uninstall button - only for non-builtin skills */}
+                        {skill.source !== 'builtin' && (
+                            <button
+                                onClick={() => handleUninstall(skill.id, skill.name)}
+                                disabled={deletingId === skill.id}
+                                className="text-gray-500 hover:text-red-400 disabled:opacity-50 transition-colors p-1"
+                                title="Remove skill"
+                            >
+                                {deletingId === skill.id ? (
+                                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                    </svg>
+                                ) : (
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                )}
+                            </button>
+                        )}
+
+                        {/* Toggle switch */}
+                        <button
+                            onClick={() => toggleSkill(skill.id)}
                             className={`
-                                inline-block h-3 w-3 transform rounded-full bg-white transition-transform
-                                ${skill.isEnabled ? 'translate-x-5' : 'translate-x-1'}
+                                relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900
+                                ${skill.isEnabled ? 'bg-blue-600' : 'bg-gray-600'}
                             `}
-                        />
-                    </button>
+                            role="switch"
+                            aria-checked={skill.isEnabled}
+                        >
+                            <span className="sr-only">Enable {skill.name}</span>
+                            <span
+                                className={`
+                                    inline-block h-3 w-3 transform rounded-full bg-white transition-transform
+                                    ${skill.isEnabled ? 'translate-x-5' : 'translate-x-1'}
+                                `}
+                            />
+                        </button>
+                    </div>
                 </div>
             ))}
 

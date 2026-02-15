@@ -37,7 +37,8 @@ interface AgentState {
     toggleLearning: () => void;
     skills: Skill[];
     toggleSkill: (id: string) => void;
-    installSkill: (skillId: string) => Promise<void>;
+    installSkill: (skillId: string) => Promise<Skill | null>;
+    uninstallSkill: (skillId: string) => Promise<void>;
 }
 
 const generateId = (): string => {
@@ -257,11 +258,27 @@ export const useAgentStore = create<AgentState>((set, get) => ({
             const result = await window.electron.skills.install(skillId);
             if (result.success && result.skill) {
                 set((state) => ({
-                    skills: [...state.skills, result.skill!],
+                    skills: [...state.skills.filter(s => s.id !== result.skill!.id), result.skill!],
+                }));
+                return result.skill;
+            }
+            return null;
+        } catch (error) {
+            console.error('Failed to install skill:', error);
+            return null;
+        }
+    },
+
+    uninstallSkill: async (skillId: string) => {
+        try {
+            const result = await window.electron.skills.uninstall(skillId);
+            if (result.success) {
+                set((state) => ({
+                    skills: state.skills.filter(s => s.id !== skillId),
                 }));
             }
         } catch (error) {
-            console.error('Failed to install skill:', error);
+            console.error('Failed to uninstall skill:', error);
         }
     },
 }));
@@ -281,6 +298,6 @@ export const useAgentActions = () => useAgentStore((state) => ({
     toggleLearning: state.toggleLearning,
     toggleSkill: state.toggleSkill,
     installSkill: state.installSkill,
+    uninstallSkill: state.uninstallSkill,
     skills: state.skills,
-
 }));

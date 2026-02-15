@@ -83,3 +83,7 @@ release
 # Installed skills
 .agents/skills/
 
+
+# Claude Code skills symlinks
+.claude/skills/
+
