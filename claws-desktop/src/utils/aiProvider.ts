@@ -1,6 +1,7 @@
 import type { Message } from '../types/message';
 import type { ProviderConfig } from '../stores/provider-store';
 import type { Mode } from '../stores/mode-store';
+import { useSkillStore } from '../stores/skill-store';
 
 // Provider adapter interface — extensible for future providers
 interface ProviderAdapter {
@@ -157,8 +158,17 @@ export async function sendToAI(
 ): Promise<string> {
     const adapter = getAdapterForProvider(provider);
 
+    // In agent mode, inject active skill prompts into the system message
+    let systemContent = SYSTEM_PROMPTS[mode];
+    if (mode === 'agent') {
+        const skillPrompts = useSkillStore.getState().getSkillPrompts();
+        if (skillPrompts) {
+            systemContent += skillPrompts;
+        }
+    }
+
     const apiMessages = [
-        { role: 'system', content: SYSTEM_PROMPTS[mode] },
+        { role: 'system', content: systemContent },
         ...messages.map((m) => ({ role: m.role, content: m.content })),
     ];
 

@@ -1,12 +1,16 @@
 import { useAgentMemory, useAgentIsLearning, useAgentActions } from '../stores/agent-store';
+import { useSkills, useSkillActions } from '../stores/skill-store';
 
 export function MemorySidebar() {
     const memory = useAgentMemory();
     const isLearning = useAgentIsLearning();
     const { toggleLearning } = useAgentActions();
+    const skills = useSkills();
+    const { toggleSkill } = useSkillActions();
 
     const patternCount = memory.patterns.length;
     const preferenceCount = Object.keys(memory.preferences).length;
+    const enabledSkillCount = skills.filter((s) => s.isEnabled).length;
 
     return (
         <div className="w-72 flex-shrink-0 border-l border-agent-border bg-agent-surface overflow-y-auto">
@@ -51,14 +55,60 @@ export function MemorySidebar() {
                 </div>
 
                 {/* Stats Grid */}
-                <div className="grid grid-cols-2 gap-3 mb-6">
-                    <div className="p-3 rounded-xl bg-agent-surfaceAlt border border-agent-border">
-                        <p className="text-2xl font-semibold text-agent-text font-mono">{patternCount}</p>
-                        <p className="text-xs text-agent-muted mt-1">Patterns</p>
+                <div className="grid grid-cols-3 gap-2 mb-6">
+                    <div className="p-2.5 rounded-xl bg-agent-surfaceAlt border border-agent-border text-center">
+                        <p className="text-xl font-semibold text-agent-text font-mono">{patternCount}</p>
+                        <p className="text-[10px] text-agent-muted mt-0.5">Patterns</p>
                     </div>
-                    <div className="p-3 rounded-xl bg-agent-surfaceAlt border border-agent-border">
-                        <p className="text-2xl font-semibold text-agent-text font-mono">{preferenceCount}</p>
-                        <p className="text-xs text-agent-muted mt-1">Preferences</p>
+                    <div className="p-2.5 rounded-xl bg-agent-surfaceAlt border border-agent-border text-center">
+                        <p className="text-xl font-semibold text-agent-text font-mono">{preferenceCount}</p>
+                        <p className="text-[10px] text-agent-muted mt-0.5">Prefs</p>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-agent-surfaceAlt border border-agent-border text-center">
+                        <p className="text-xl font-semibold text-agent-text font-mono">{enabledSkillCount}</p>
+                        <p className="text-[10px] text-agent-muted mt-0.5">Skills</p>
+                    </div>
+                </div>
+
+                {/* Skills Section */}
+                <div className="mb-6">
+                    <h4 className="text-xs font-medium text-agent-muted uppercase tracking-wider mb-3">
+                        Skills
+                    </h4>
+                    <div className="space-y-1.5">
+                        {skills.map((skill) => (
+                            <button
+                                key={skill.id}
+                                onClick={() => toggleSkill(skill.id)}
+                                className={`
+                                    w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left
+                                    transition-all duration-200 group
+                                    ${skill.isEnabled
+                                        ? 'bg-agent-primary/8 border border-agent-primary/20'
+                                        : 'bg-agent-surfaceAlt border border-agent-border hover:border-agent-primary/20'
+                                    }
+                                `}
+                            >
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                    <span className="text-base flex-shrink-0">{skill.icon}</span>
+                                    <div className="min-w-0">
+                                        <p className={`text-xs font-medium truncate ${skill.isEnabled ? 'text-agent-text' : 'text-agent-muted'
+                                            }`}>
+                                            {skill.name}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div
+                                    className={`w-6 h-3.5 rounded-full transition-colors flex-shrink-0 ${skill.isEnabled ? 'bg-agent-primary' : 'bg-zinc-700'
+                                        }`}
+                                >
+                                    <div
+                                        className={`w-2.5 h-2.5 rounded-full bg-white transform transition-transform mt-0.5 ${skill.isEnabled ? 'translate-x-3' : 'translate-x-0.5'
+                                            }`}
+                                    />
+                                </div>
+                            </button>
+                        ))}
                     </div>
                 </div>
 
