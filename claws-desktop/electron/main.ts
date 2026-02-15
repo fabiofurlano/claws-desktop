@@ -15,6 +15,7 @@ import {
     uninstallSkill,
     searchSkills,
 } from './skills-registry';
+import { startMcpServer, stopMcpServer } from './mcp-server.js';
 
 // In CommonJS, __dirname is automatically available
 
@@ -51,9 +52,16 @@ function createWindow(): void {
 }
 
 // App lifecycle
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
     // Initialize SQLite database
     initDatabase();
+
+    // Start MCP server for OpenClaw connection
+    try {
+        await startMcpServer();
+    } catch (error) {
+        console.error('[Main] Failed to start MCP server:', error);
+    }
 
     createWindow();
 
@@ -70,7 +78,8 @@ app.on('window-all-closed', () => {
     }
 });
 
-app.on('before-quit', () => {
+app.on('before-quit', async () => {
+    await stopMcpServer();
     closeDatabase();
 });
 
