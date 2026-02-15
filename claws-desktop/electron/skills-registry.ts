@@ -19,13 +19,13 @@ const execAsync = promisify(exec);
 
 /**
  * Validate skill ID to prevent command injection
- * Only allows alphanumeric characters, hyphens, underscores, and forward slashes
- * Valid formats: "skill-name" or "owner/skill-name"
+ * Only allows alphanumeric characters, hyphens, underscores, forward slashes, and colons
+ * Valid formats: "skill-name", "owner/skill-name", or "owner/repo:skill-name"
  */
 function isValidSkillId(skillId: string): boolean {
-    // Allow format: owner/skill-name or skill-name
-    // Only alphanumeric, hyphens, underscores, forward slashes
-    return /^[a-zA-Z0-9/_-]+$/.test(skillId);
+    // Allow format: owner/repo:skill-name or owner/skill-name or skill-name
+    // Only alphanumeric, hyphens, underscores, forward slashes, colons
+    return /^[a-zA-Z0-9/:_-]+$/.test(skillId);
 }
 
 // Skills directory in userData
@@ -79,26 +79,43 @@ function parseSkillFile(skillPath: string, skillId: string): Skill | null {
 
 /**
  * List all installed skills
+ * Checks both userData/skills and .agents/skills directories
  */
 export async function listInstalledSkills(): Promise<Skill[]> {
-    const skillsDir = getSkillsDirectory();
     const skills: Skill[] = [];
+    const seenIds = new Set<string>();
 
-    try {
-        const entries = fs.readdirSync(skillsDir, { withFileTypes: true });
+    // Helper to add skills from a directory
+    const addSkillsFromDir = (dir: string, source: SkillSource = 'vercel') => {
+        try {
+            if (!fs.existsSync(dir)) return;
 
-        for (const entry of entries) {
-            if (entry.isDirectory()) {
-                const skillPath = path.join(skillsDir, entry.name);
-                const skill = parseSkillFile(skillPath, entry.name);
-                if (skill) {
-                    skills.push(skill);
+            const entries = fs.readdirSync(dir, { withFileTypes: true });
+
+            for (const entry of entries) {
+                if (entry.isDirectory() && !seenIds.has(entry.name)) {
+                    const skillPath = path.join(dir, entry.name);
+                    const skill = parseSkillFile(skillPath, entry.name);
+                    if (skill) {
+                        skill.source = source;
+                        skills.push(skill);
+                        seenIds.add(entry.name);
+                    }
                 }
             }
+        } catch (error) {
+            console.error(`[SkillsRegistry] Error listing skills from ${dir}:`, error);
         }
-    } catch (error) {
-        console.error('[SkillsRegistry] Error listing skills:', error);
-    }
+    };
+
+    // 1. Check .agents/skills folder (where npx skills installs to)
+    const projectDir = app.getAppPath();
+    const agentsSkillsDir = path.join(projectDir, '.agents', 'skills');
+    addSkillsFromDir(agentsSkillsDir, 'vercel');
+
+    // 2. Check userData/skills folder (custom skills)
+    const userDataSkillsDir = getSkillsDirectory();
+    addSkillsFromDir(userDataSkillsDir, 'local');
 
     return skills;
 }
@@ -115,7 +132,6 @@ export async function installSkill(skillId: string): Promise<SkillInstallResult>
         return { success: false, error: 'Invalid skill ID format' };
     }
 
-    const skillsDir = getSkillsDirectory();
     const projectDir = app.getAppPath();
 
     try {
@@ -128,16 +144,17 @@ export async function installSkill(skillId: string): Promise<SkillInstallResult>
         if (skillId.includes(':')) {
             // Specific skill: "owner/repo:skill-name"
             const [repo, specificSkill] = skillId.split(':');
-            npxCommand = `npx skills add ${repo} --skill ${specificSkill}`;
+            // Use --agent claude-code to install for Claude Code, -y to skip prompts
+            npxCommand = `npx skills add ${repo} --skill ${specificSkill} --agent claude-code -y`;
             skillName = specificSkill;
         } else {
             // Install all skills from repo: "owner/repo"
-            npxCommand = `npx skills add ${skillId} --all`;
+            npxCommand = `npx skills add ${skillId} --all -y`;
             skillName = skillId.split('/')[1] || skillId;
         }
 
         // Run npx skills add command from project directory
-        // Skills CLI installs to .skills folder in current directory
+        // Skills CLI installs to .agents/skills folder in current directory
         const { stdout, stderr } = await execAsync(npxCommand, {
             cwd: projectDir,
             env: process.env,
@@ -150,25 +167,22 @@ export async function installSkill(skillId: string): Promise<SkillInstallResult>
 
         console.log('[SkillsRegistry] npx stdout:', stdout);
 
-        // Skills are installed to .skills folder in project directory
-        const dotSkillsDir = path.join(projectDir, '.skills');
+        // Skills are installed to .agents/skills folder in project directory
+        const agentsSkillsDir = path.join(projectDir, '.agents', 'skills');
 
         // Look for installed skill
-        if (fs.existsSync(dotSkillsDir)) {
-            const entries = fs.readdirSync(dotSkillsDir, { withFileTypes: true });
+        if (fs.existsSync(agentsSkillsDir)) {
+            const entries = fs.readdirSync(agentsSkillsDir, { withFileTypes: true });
             for (const entry of entries) {
                 if (entry.isDirectory()) {
-                    const skillPath = path.join(dotSkillsDir, entry.name);
+                    const skillPath = path.join(agentsSkillsDir, entry.name);
                     const stat = fs.statSync(skillPath);
                     // If created in the last 30 seconds, likely our new skill
                     if (Date.now() - stat.birthtimeMs < 30000) {
                         const skill = parseSkillFile(skillPath, entry.name);
                         if (skill) {
-                            // Copy to userData skills directory for persistence
-                            const destPath = path.join(skillsDir, entry.name);
-                            if (!fs.existsSync(destPath)) {
-                                fs.cpSync(skillPath, destPath, { recursive: true });
-                            }
+                            // Update skill ID to match the format we use
+                            skill.id = skillId;
                             return { success: true, skill };
                         }
                     }

@@ -79,3 +79,7 @@ release
 
 # macOS
 .DS_Store
+
+# Installed skills
+.agents/skills/
+
