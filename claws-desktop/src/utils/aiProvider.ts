@@ -112,6 +112,8 @@ export async function testProviderConnection(provider: ProviderConfig): Promise<
 }
 
 // Default provider configs
+// NOTE: Z.AI model names MUST be lowercase (glm-4.7, not GLM-4.7)
+// See OpenClaw docs: model refs are normalized to lowercase
 export const DEFAULT_PROVIDERS = {
     openai: {
         name: 'OpenAI',
@@ -135,10 +137,17 @@ export const DEFAULT_PROVIDERS = {
         isActive: true,
     },
     zai: {
-        name: 'Z.AI (GLM)',
+        name: 'Z.AI (GLM Coding)',
         apiKey: '',
-        model: 'GLM-4.7',
+        model: 'glm-4.7',  // MUST be lowercase - Z.AI is case-sensitive
         baseUrl: 'https://api.z.ai/api/coding/paas/v4',
+        isActive: true,
+    },
+    zaiGlobal: {
+        name: 'Z.AI (GLM Global)',
+        apiKey: '',
+        model: 'glm-4.7',  // MUST be lowercase
+        baseUrl: 'https://api.z.ai/api/paas/v4',
         isActive: true,
     },
 } as const;
