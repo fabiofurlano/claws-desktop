@@ -196,4 +196,11 @@ export const DEFAULT_PROVIDERS = {
         baseUrl: 'https://openrouter.ai/api/v1',
         isActive: true,
     },
+    zai: {
+        name: 'Z.AI (GLM)',
+        apiKey: '',
+        model: 'GLM-4.7',
+        baseUrl: 'https://api.z.ai/api/coding/paas/v4',
+        isActive: true,
+    },
 } as const;
