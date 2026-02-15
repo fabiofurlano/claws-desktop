@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { Message, NewMessage } from '../types/message';
-import { type Skill, skillsManager } from '../utils/skillsManager';
+import { type Skill } from '../types/skill';
+import { skillsManager } from '../utils/skillsManager';
 
 interface UserProfile {
     name: string;
@@ -36,6 +37,7 @@ interface AgentState {
     toggleLearning: () => void;
     skills: Skill[];
     toggleSkill: (id: string) => void;
+    installSkill: (skillId: string) => Promise<void>;
 }
 
 const generateId = (): string => {
@@ -64,9 +66,36 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     initialize: async () => {
         set({ isLoading: true });
         try {
-            // 0. Load Skills
-            const initialSkills = skillsManager.getSkills();
-            set({ skills: initialSkills });
+            // 0. Load Skills (built-in + installed Vercel skills)
+            // Convert built-in skills to unified Skill type
+            const builtInSkillsRaw = skillsManager.getSkills();
+            const builtInSkills: Skill[] = builtInSkillsRaw.map(s => ({
+                id: s.id,
+                name: s.name,
+                description: s.description,
+                source: 'builtin' as const,
+                isEnabled: s.isEnabled,
+                triggers: s.triggers,
+            }));
+
+            let vercelSkills: Skill[] = [];
+            try {
+                vercelSkills = await window.electron.skills.list();
+            } catch (err) {
+                console.warn('Could not load Vercel skills:', err);
+            }
+
+            // Merge skills, preferring loaded state for existing skills
+            const currentSkills = get().skills;
+            const allSkills = [...builtInSkills, ...vercelSkills].map(skill => {
+                const existing = currentSkills.find(s => s.id === skill.id);
+                if (existing) {
+                    return { ...skill, isEnabled: existing.isEnabled };
+                }
+                return skill;
+            });
+
+            set({ skills: allSkills });
 
             // 1. Load or Create Conversation
             const conversations = (await window.electron.db.listConversations('agent')) as any[];
@@ -222,6 +251,19 @@ export const useAgentStore = create<AgentState>((set, get) => ({
             return { skills: newSkills };
         });
     },
+
+    installSkill: async (skillId: string) => {
+        try {
+            const result = await window.electron.skills.install(skillId);
+            if (result.success && result.skill) {
+                set((state) => ({
+                    skills: [...state.skills, result.skill!],
+                }));
+            }
+        } catch (error) {
+            console.error('Failed to install skill:', error);
+        }
+    },
 }));
 
 // Selector hooks
@@ -238,6 +280,7 @@ export const useAgentActions = () => useAgentStore((state) => ({
     setIsTyping: state.setIsTyping,
     toggleLearning: state.toggleLearning,
     toggleSkill: state.toggleSkill,
+    installSkill: state.installSkill,
     skills: state.skills,
 
 }));
