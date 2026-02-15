@@ -51,6 +51,13 @@ export interface ElectronAPI {
         updateConnection: (id: string, updates: { api_key?: string; is_enabled?: number }) => Promise<unknown>;
         deleteConnection: (id: string) => Promise<unknown>;
         listTools: (apiKey: string) => Promise<unknown[]>;
+        // Tool management
+        getConnectedTools: (connectionId?: string) => Promise<unknown[]>;
+        connectTool: (toolSlug: string) => Promise<{ success: boolean; toolId?: string; error?: string }>;
+        checkConnectionStatus: (connectionId: string) => Promise<{ status: string; details?: unknown }>;
+        enableTool: (toolId: string) => Promise<{ success: boolean; error?: string }>;
+        disableTool: (toolId: string) => Promise<{ success: boolean; error?: string }>;
+        removeTool: (toolId: string) => Promise<{ success: boolean; error?: string }>;
     };
 }
 
@@ -126,6 +133,19 @@ const electronAPI: ElectronAPI = {
             ipcRenderer.invoke('mcp:deleteConnection', id),
         listTools: (apiKey: string) =>
             ipcRenderer.invoke('mcp:listTools', apiKey),
+        // Tool management
+        getConnectedTools: (connectionId?: string) =>
+            ipcRenderer.invoke('mcp:getConnectedTools', connectionId),
+        connectTool: (toolSlug: string) =>
+            ipcRenderer.invoke('mcp:connectTool', toolSlug),
+        checkConnectionStatus: (connectionId: string) =>
+            ipcRenderer.invoke('mcp:checkConnectionStatus', connectionId),
+        enableTool: (toolId: string) =>
+            ipcRenderer.invoke('mcp:enableTool', toolId),
+        disableTool: (toolId: string) =>
+            ipcRenderer.invoke('mcp:disableTool', toolId),
+        removeTool: (toolId: string) =>
+            ipcRenderer.invoke('mcp:removeTool', toolId),
     },
 };
 
