@@ -42,8 +42,12 @@ export async function streamThinking(
         }
 
         // @ts-ignore
+        let buffer = '';
         for await (const chunk of response.body) {
-            const lines = chunk.toString().split('\n');
+            buffer += chunk.toString();
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || ''; // Keep the last incomplete line in buffer
+
             for (const line of lines) {
                 if (line.trim() === '') continue;
                 if (line.trim() === 'data: [DONE]') continue;
@@ -58,6 +62,16 @@ export async function streamThinking(
                     console.error('Error parsing chunk:', e);
                 }
             }
+        }
+
+        // Process any remaining buffer if it's a complete line (unlikely but possible)
+        if (buffer.trim() && buffer.startsWith('data: ') && buffer !== 'data: [DONE]') {
+            try {
+                const data = JSON.parse(buffer.slice(6));
+                if (data.choices && data.choices[0]?.delta?.content) {
+                    onChunk(data.choices[0].delta.content);
+                }
+            } catch (e) { }
         }
 
         onDone();
