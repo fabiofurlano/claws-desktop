@@ -1,5 +1,7 @@
 import { useRef, useEffect } from 'react';
-import { useChatMessages, useChatIsTyping, useChatActions } from '../stores/chat-store';
+import { useChatMessages, useChatIsTyping, useChatActions, useChatStore } from '../stores/chat-store';
+import { useProviderStore } from '../stores/provider-store';
+import { sendToAI } from '../utils/aiProvider';
 import { Message } from './Message';
 import { ChatInput } from './ChatInput';
 
@@ -18,14 +20,33 @@ export function ChatMode() {
         addMessage({ role: 'user', content });
         setIsTyping(true);
 
-        // Simulated AI response (replaced with real provider in Phase 2)
-        await new Promise((resolve) => setTimeout(resolve, 500 + Math.random() * 1000));
-
-        addMessage({
-            role: 'assistant',
-            content: `I received your message: "${content}". Chat mode is active — no memory is being stored.`,
-        });
-        setIsTyping(false);
+        try {
+            const provider = useProviderStore.getState().getActiveProvider();
+            if (!provider || !provider.apiKey) {
+                // No provider configured — show helpful message
+                addMessage({
+                    role: 'assistant',
+                    content: '⚙️ No AI provider configured yet. Go to **Settings** to add your API key (OpenAI, Anthropic, or OpenRouter).',
+                });
+            } else {
+                // Get current messages from store (includes the one just added)
+                const currentMessages = useChatStore.getState().messages;
+                const response = await sendToAI(
+                    currentMessages,
+                    'chat',
+                    provider,
+                );
+                addMessage({ role: 'assistant', content: response });
+            }
+        } catch (error) {
+            const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+            addMessage({
+                role: 'assistant',
+                content: `❌ Error: ${errorMsg}`,
+            });
+        } finally {
+            setIsTyping(false);
+        }
     };
 
     return (

@@ -1,5 +1,7 @@
 import { useRef, useEffect } from 'react';
-import { useAgentMessages, useAgentIsTyping, useAgentIsLearning, useAgentActions } from '../stores/agent-store';
+import { useAgentMessages, useAgentIsTyping, useAgentIsLearning, useAgentActions, useAgentStore } from '../stores/agent-store';
+import { useProviderStore } from '../stores/provider-store';
+import { sendToAI } from '../utils/aiProvider';
 import { Message } from './Message';
 import { ChatInput } from './ChatInput';
 import { MemorySidebar } from './MemorySidebar';
@@ -20,14 +22,26 @@ export function AgentMode() {
         addMessage({ role: 'user', content });
         setIsTyping(true);
 
-        // Simulated AI response (replaced with real provider in Phase 2)
-        await new Promise((resolve) => setTimeout(resolve, 800 + Math.random() * 1500));
-
-        const response = isLearning
-            ? `I've processed your message and stored it in my memory. I now have ${messages.length + 1} messages to learn from.`
-            : `I received your message. Learning is currently paused, so I won't store this interaction.`;
-
-        addMessage({ role: 'assistant', content: response });
+        try {
+            const provider = useProviderStore.getState().getActiveProvider();
+            if (!provider || !provider.apiKey) {
+                addMessage({
+                    role: 'assistant',
+                    content: '⚙️ No AI provider configured yet. Go to **Settings** to add your API key (OpenAI, Anthropic, or OpenRouter).',
+                });
+            } else {
+                // Get current messages from store (includes the one just added)
+                const currentMessages = useAgentStore.getState().messages;
+                const response = await sendToAI(currentMessages, 'agent', provider);
+                addMessage({ role: 'assistant', content: response });
+            }
+        } catch (error) {
+            const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+            addMessage({
+                role: 'assistant',
+                content: `❌ Error: ${errorMsg}`,
+            });
+        }
 
         // Record pattern if learning is on and message is substantial
         if (isLearning && content.length > 10) {
