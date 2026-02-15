@@ -12,12 +12,29 @@ interface LocalSkill {
     isEnabled: boolean;
 }
 
+// Simple toast notification state
+interface Toast {
+    id: string;
+    message: string;
+    type: 'success' | 'error' | 'info';
+}
+
 export const SkillsList: React.FC = () => {
     const skills = useAgentStore((state) => state.skills) as LocalSkill[];
     const toggleSkill = useAgentStore((state) => state.toggleSkill);
     const uninstallSkill = useAgentStore((state) => state.uninstallSkill);
     const [showBrowser, setShowBrowser] = useState(false);
     const [deletingId, setDeletingId] = useState<string | null>(null);
+    const [toasts, setToasts] = useState<Toast[]>([]);
+
+    // Show toast notification
+    const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+        const id = Date.now().toString();
+        setToasts(prev => [...prev, { id, message, type }]);
+        setTimeout(() => {
+            setToasts(prev => prev.filter(t => t.id !== id));
+        }, 3000);
+    };
 
     // Get source badge color
     const getSourceBadge = (source?: string) => {
@@ -34,6 +51,7 @@ export const SkillsList: React.FC = () => {
     // Handle skill installed from browser - add to store
     const handleSkillInstalled = (skill: UnifiedSkill) => {
         console.log('Skill installed:', skill.name);
+        showToast(`"${skill.name}" installed successfully!`, 'success');
         // Add the skill to the store if not already there
         const exists = skills.some(s => s.id === skill.id);
         if (!exists) {
@@ -57,17 +75,39 @@ export const SkillsList: React.FC = () => {
         }
 
         setDeletingId(skillId);
+        showToast(`Removing "${skillName}"...`, 'info');
+
         try {
             await uninstallSkill(skillId);
+            showToast(`"${skillName}" removed successfully!`, 'success');
         } catch (error) {
             console.error('Failed to uninstall skill:', error);
+            showToast(`Failed to remove "${skillName}"`, 'error');
         } finally {
             setDeletingId(null);
         }
     };
 
     return (
-        <div className="flex flex-col gap-2 p-2">
+        <div className="flex flex-col gap-2 p-2 relative">
+            {/* Toast notifications */}
+            <div className="absolute top-0 right-0 z-50 flex flex-col gap-1 pointer-events-none">
+                {toasts.map(toast => (
+                    <div
+                        key={toast.id}
+                        className={`
+                            px-3 py-2 rounded-lg text-xs font-medium shadow-lg animate-fade-in
+                            pointer-events-auto
+                            ${toast.type === 'success' ? 'bg-green-600 text-white' :
+                              toast.type === 'error' ? 'bg-red-600 text-white' :
+                              'bg-gray-700 text-gray-200'}
+                        `}
+                    >
+                        {toast.message}
+                    </div>
+                ))}
+            </div>
+
             <div className="flex items-center justify-between mb-2">
                 <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">
                     Capabilities

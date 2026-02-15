@@ -213,27 +213,57 @@ export async function installSkill(skillId: string): Promise<SkillInstallResult>
 }
 
 /**
- * Uninstall a skill by removing its directory
+ * Uninstall a skill using npx skills CLI
+ * Also removes from local directories if present
  */
 export async function uninstallSkill(skillId: string): Promise<{ success: boolean; error?: string }> {
-    const skillsDir = getSkillsDirectory();
-    const skillPath = path.join(skillsDir, skillId);
+    const projectDir = app.getAppPath();
 
     try {
-        if (!fs.existsSync(skillPath)) {
-            return { success: false, error: `Skill ${skillId} is not installed` };
+        console.log(`[SkillsRegistry] Uninstalling skill: ${skillId}`);
+
+        // Extract skill name from ID (format: "owner/repo:skill-name" or just "skill-name")
+        const skillName = skillId.includes(':') ? skillId.split(':')[1] : skillId.split('/').pop() || skillId;
+
+        // Try using npx skills remove command first
+        try {
+            const { stdout, stderr } = await execAsync(`npx skills remove ${skillName} --agent claude-code -y`, {
+                cwd: projectDir,
+                env: process.env,
+                timeout: 60000,
+            });
+            console.log('[SkillsRegistry] npx skills remove stdout:', stdout);
+            if (stderr && !stderr.includes('npm warn') && !stderr.includes('WARN')) {
+                console.warn('[SkillsRegistry] npx stderr:', stderr);
+            }
+        } catch (npxError) {
+            console.warn('[SkillsRegistry] npx skills remove failed, trying manual removal:', npxError);
         }
 
-        // Remove skill directory recursively
-        fs.rmSync(skillPath, { recursive: true, force: true });
+        // Also try to remove from .agents/skills directory manually
+        const agentsSkillsDir = path.join(projectDir, '.agents', 'skills');
+        const skillPath = path.join(agentsSkillsDir, skillName);
 
-        console.log(`[SkillsRegistry] Uninstalled skill: ${skillId}`);
+        if (fs.existsSync(skillPath)) {
+            fs.rmSync(skillPath, { recursive: true, force: true });
+            console.log(`[SkillsRegistry] Removed skill directory: ${skillPath}`);
+        }
+
+        // Also check symlink in .claude/skills
+        const claudeSkillsDir = path.join(projectDir, '.claude', 'skills');
+        const symlinkPath = path.join(claudeSkillsDir, skillName);
+        if (fs.existsSync(symlinkPath)) {
+            fs.rmSync(symlinkPath, { recursive: true, force: true });
+            console.log(`[SkillsRegistry] Removed skill symlink: ${symlinkPath}`);
+        }
+
+        console.log(`[SkillsRegistry] Successfully uninstalled skill: ${skillId}`);
         return { success: true };
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         console.error(`[SkillsRegistry] Failed to uninstall skill ${skillId}:`, errorMessage);
 
-        return { success: false, error: errorMessage };
+        return { success: false, error: `Failed to uninstall: ${errorMessage}` };
     }
 }
 
