@@ -1,12 +1,12 @@
-import { useAgentMemory, useAgentIsLearning, useAgentActions } from '../stores/agent-store';
-import { useSkills, useSkillActions } from '../stores/skill-store';
+import { useAgentMemory, useAgentIsLearning, useAgentActions, useAgentStore } from '../stores/agent-store';
+import { SkillsList } from './SkillsList';
 
 export function MemorySidebar() {
     const memory = useAgentMemory();
     const isLearning = useAgentIsLearning();
     const { toggleLearning } = useAgentActions();
-    const skills = useSkills();
-    const { toggleSkill } = useSkillActions();
+    const skills = useAgentStore((state) => state.skills);
+    // const { toggleSkill } = useSkillActions(); // Removed legacy
 
     const patternCount = memory.patterns.length;
     const preferenceCount = Object.keys(memory.preferences).length;
@@ -71,46 +71,7 @@ export function MemorySidebar() {
                 </div>
 
                 {/* Skills Section */}
-                <div className="mb-6">
-                    <h4 className="text-xs font-medium text-agent-muted uppercase tracking-wider mb-3">
-                        Skills
-                    </h4>
-                    <div className="space-y-1.5">
-                        {skills.map((skill) => (
-                            <button
-                                key={skill.id}
-                                onClick={() => toggleSkill(skill.id)}
-                                className={`
-                                    w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left
-                                    transition-all duration-200 group
-                                    ${skill.isEnabled
-                                        ? 'bg-agent-primary/8 border border-agent-primary/20'
-                                        : 'bg-agent-surfaceAlt border border-agent-border hover:border-agent-primary/20'
-                                    }
-                                `}
-                            >
-                                <div className="flex items-center gap-2.5 min-w-0">
-                                    <span className="text-base flex-shrink-0">{skill.icon}</span>
-                                    <div className="min-w-0">
-                                        <p className={`text-xs font-medium truncate ${skill.isEnabled ? 'text-agent-text' : 'text-agent-muted'
-                                            }`}>
-                                            {skill.name}
-                                        </p>
-                                    </div>
-                                </div>
-                                <div
-                                    className={`w-6 h-3.5 rounded-full transition-colors flex-shrink-0 ${skill.isEnabled ? 'bg-agent-primary' : 'bg-zinc-700'
-                                        }`}
-                                >
-                                    <div
-                                        className={`w-2.5 h-2.5 rounded-full bg-white transform transition-transform mt-0.5 ${skill.isEnabled ? 'translate-x-3' : 'translate-x-0.5'
-                                            }`}
-                                    />
-                                </div>
-                            </button>
-                        ))}
-                    </div>
-                </div>
+                <SkillsList />
 
                 {/* User Profile */}
                 {memory.userProfile.name && (

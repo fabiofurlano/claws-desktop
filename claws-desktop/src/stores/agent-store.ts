@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { Message, NewMessage } from '../types/message';
+import { type Skill, skillsManager } from '../utils/skillsManager';
 
 interface UserProfile {
     name: string;
@@ -33,6 +34,8 @@ interface AgentState {
     updateMemory: (updates: Partial<Memory>) => void;
     setIsTyping: (isTyping: boolean) => void;
     toggleLearning: () => void;
+    skills: Skill[];
+    toggleSkill: (id: string) => void;
 }
 
 const generateId = (): string => {
@@ -52,6 +55,7 @@ const defaultMemory: Memory = {
 export const useAgentStore = create<AgentState>((set, get) => ({
     messages: [],
     memory: defaultMemory,
+    skills: [],
     isTyping: false,
     isLearning: true,
     isLoading: false,
@@ -60,6 +64,10 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     initialize: async () => {
         set({ isLoading: true });
         try {
+            // 0. Load Skills
+            const initialSkills = skillsManager.getSkills();
+            set({ skills: initialSkills });
+
             // 1. Load or Create Conversation
             const conversations = (await window.electron.db.listConversations('agent')) as any[];
             let conversationId: string;
@@ -199,6 +207,21 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     toggleLearning: () => {
         set((state) => ({ isLearning: !state.isLearning }));
     },
+
+    toggleSkill: (id: string) => {
+        set((state) => {
+            const newSkills = state.skills.map(skill => {
+                if (skill.id === id) {
+                    const enabled = !skill.isEnabled;
+                    // Update manager as well
+                    skillsManager.toggleSkill(id, enabled);
+                    return { ...skill, isEnabled: enabled };
+                }
+                return skill;
+            });
+            return { skills: newSkills };
+        });
+    },
 }));
 
 // Selector hooks
@@ -214,4 +237,7 @@ export const useAgentActions = () => useAgentStore((state) => ({
     updateMemory: state.updateMemory,
     setIsTyping: state.setIsTyping,
     toggleLearning: state.toggleLearning,
+    toggleSkill: state.toggleSkill,
+    skills: state.skills,
+
 }));
