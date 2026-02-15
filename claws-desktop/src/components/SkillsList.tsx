@@ -1,15 +1,53 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAgentStore } from '../stores/agent-store';
+import { SkillsBrowser } from './SkillsBrowser';
+import type { Skill as UnifiedSkill } from '../types/skill';
+
+// Local interface matching current skillsManager.Skill structure
+interface LocalSkill {
+    id: string;
+    name: string;
+    description: string;
+    source?: 'builtin' | 'vercel' | 'local';
+    isEnabled: boolean;
+}
 
 export const SkillsList: React.FC = () => {
-    const skills = useAgentStore((state) => state.skills);
+    const skills = useAgentStore((state) => state.skills) as LocalSkill[];
     const toggleSkill = useAgentStore((state) => state.toggleSkill);
+    const [showBrowser, setShowBrowser] = useState(false);
+
+    // Get source badge color
+    const getSourceBadge = (source?: string) => {
+        switch (source) {
+            case 'vercel':
+                return 'bg-purple-600/20 text-purple-400';
+            case 'builtin':
+                return 'bg-blue-600/20 text-blue-400';
+            default:
+                return 'bg-gray-600/20 text-gray-400';
+        }
+    };
+
+    // Handle skill installed from browser
+    const handleSkillInstalled = (skill: UnifiedSkill) => {
+        console.log('Skill installed:', skill.name);
+    };
 
     return (
         <div className="flex flex-col gap-2 p-2">
-            <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-2">
-                Capabilities
-            </h3>
+            <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">
+                    Capabilities
+                </h3>
+                <button
+                    onClick={() => setShowBrowser(true)}
+                    className="text-xs px-2 py-1 bg-purple-600/20 text-purple-400 rounded hover:bg-purple-600/30 transition-colors"
+                    title="Browse and install skills from skills.sh"
+                >
+                    + Add Skill
+                </button>
+            </div>
 
             {skills.length === 0 && (
                 <div className="text-xs text-gray-500 italic">No skills loaded</div>
@@ -20,10 +58,15 @@ export const SkillsList: React.FC = () => {
                     key={skill.id}
                     className="flex items-center justify-between bg-gray-800/50 p-3 rounded-lg border border-gray-700 hover:border-gray-600 transition-colors"
                 >
-                    <div className="flex flex-col gap-0.5 overflow-hidden">
-                        <span className="text-sm font-medium text-gray-200 truncate" title={skill.name}>
-                            {skill.name}
-                        </span>
+                    <div className="flex flex-col gap-0.5 overflow-hidden flex-1 mr-2">
+                        <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-gray-200 truncate" title={skill.name}>
+                                {skill.name}
+                            </span>
+                            <span className={`text-xs px-1.5 py-0.5 rounded ${getSourceBadge(skill.source)}`}>
+                                {skill.source || 'builtin'}
+                            </span>
+                        </div>
                         <span className="text-xs text-gray-500 truncate" title={skill.description}>
                             {skill.description}
                         </span>
@@ -48,6 +91,12 @@ export const SkillsList: React.FC = () => {
                     </button>
                 </div>
             ))}
+
+            <SkillsBrowser
+                isOpen={showBrowser}
+                onClose={() => setShowBrowser(false)}
+                onInstall={handleSkillInstalled}
+            />
         </div>
     );
 };
