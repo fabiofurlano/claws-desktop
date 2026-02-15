@@ -1,6 +1,6 @@
 # Claws Desktop - Features Roadmap
 
-**Last Updated:** 2026-02-15 21:55
+**Last Updated:** 2026-02-16
 
 ---
 
@@ -41,6 +41,22 @@ A self-improving AI assistant desktop app that can:
 - [x] Document MCP endpoint URL (`docs/MCP-SETUP.md`)
 - [x] Automated test script (`scripts/test-mcp.sh`)
 - [ ] User adds to OpenClaw config (manual step)
+
+---
+
+## Phase 2.5: Composio Integration (DONE)
+
+### 2.5.1 Core Integration
+- [x] Install `@composio/core` and `@composio/mcp`
+- [x] Create database tables for MCP connections
+- [x] Create Composio service layer
+- [x] Add IPC handlers for MCP operations
+
+### 2.5.2 UI & Bridging
+- [x] Create MCP Settings component
+- [x] Bridge Composio tools to MCP server
+- [x] Create integration test script
+- [x] Documentation (`claws-desktop/docs/COMPOSIO-INTEGRATION.md`)
 
 ---
 
