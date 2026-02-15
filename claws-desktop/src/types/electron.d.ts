@@ -12,6 +12,32 @@ export interface McpConnection {
     last_used: number | null;
 }
 
+// Composio Tool from API
+export interface ComposioTool {
+    name: string;
+    slug: string;
+    description: string;
+    logo: string;
+    categories: string[];
+}
+
+// Connected Tool stored in database
+export interface ConnectedTool {
+    id: string;
+    connection_id: string;
+    tool_name: string;
+    tool_slug: string;
+    is_enabled: number;
+    config: string | null;
+    created_at: number;
+}
+
+// Connection status from OAuth flow
+export interface ConnectionStatus {
+    status: 'pending' | 'completed' | 'active' | 'failed' | 'inactive';
+    message?: string;
+}
+
 declare global {
     interface Window {
         electron: {
@@ -52,6 +78,13 @@ declare global {
                 updateConnection: (id: string, updates: { api_key?: string; is_enabled?: number }) => Promise<unknown>;
                 deleteConnection: (id: string) => Promise<unknown>;
                 listTools: (apiKey: string) => Promise<unknown[]>;
+                // NEW: Tool management
+                getConnectedTools: (connectionId?: string) => Promise<ConnectedTool[]>;
+                connectTool: (toolSlug: string) => Promise<{ redirectUrl: string | null; connectionId: string }>;
+                checkConnectionStatus: (connectionId: string) => Promise<ConnectionStatus>;
+                enableTool: (toolId: string) => Promise<unknown>;
+                disableTool: (toolId: string) => Promise<unknown>;
+                removeTool: (toolId: string) => Promise<unknown>;
             };
         };
     }
