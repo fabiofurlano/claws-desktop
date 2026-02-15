@@ -9,6 +9,7 @@ import {
     setProfileField, getProfile,
     getMemoryStats,
     createMcpConnection, getMcpConnections, updateMcpConnection, deleteMcpConnection,
+    getConnectedTools, addConnectedTool, toggleConnectedTool, removeConnectedTool,
 } from './database';
 import {
     listInstalledSkills,
@@ -204,4 +205,77 @@ ipcMain.handle('mcp:listTools', async (_event, apiKey: string) => {
         console.error('[IPC] Failed to list tools:', error);
         return [];
     }
+});
+
+// IPC handlers — Connected Tools
+// Get connected tools from database
+ipcMain.handle('mcp:getConnectedTools', async (_event, connectionId?: string) => {
+    return getConnectedTools(connectionId);
+});
+
+// Connect a tool (initiate OAuth)
+ipcMain.handle('mcp:connectTool', async (_event, toolSlug: string) => {
+    try {
+        const { connectTool, getToolkitDetails } = await import('./composio-service.js');
+
+        // Get active Composio connection
+        const connections = getMcpConnections();
+        const composioConn = connections.find(c => c.type === 'composio' && c.is_enabled && c.api_key);
+
+        if (!composioConn) {
+            throw new Error('No active Composio connection');
+        }
+
+        // Get toolkit details to find authConfigId
+        const toolkit = await getToolkitDetails(toolSlug);
+        const authConfig = toolkit.authConfigDetails?.[0];
+
+        if (!authConfig?.id) {
+            throw new Error('No auth config found for this tool');
+        }
+
+        // Initiate connection
+        const result = await connectTool('default-user', authConfig.id);
+
+        // Store pending connection in database
+        const toolId = `tool-${Date.now()}`;
+        addConnectedTool({
+            id: toolId,
+            connection_id: composioConn.id,
+            tool_name: toolkit.name,
+            tool_slug: toolSlug,
+            config: JSON.stringify({ pendingConnectionId: result.connectionId }),
+        });
+
+        return result;
+    } catch (error) {
+        console.error('[IPC] Failed to connect tool:', error);
+        throw error;
+    }
+});
+
+// Check connection status
+ipcMain.handle('mcp:checkConnectionStatus', async (_event, connectionId: string) => {
+    try {
+        const { checkConnectionStatus } = await import('./composio-service.js');
+        return await checkConnectionStatus(connectionId);
+    } catch (error) {
+        console.error('[IPC] Failed to check status:', error);
+        return { status: 'failed', message: String(error) };
+    }
+});
+
+// Enable connected tool
+ipcMain.handle('mcp:enableTool', async (_event, toolId: string) => {
+    return toggleConnectedTool(toolId, 1);
+});
+
+// Disable connected tool
+ipcMain.handle('mcp:disableTool', async (_event, toolId: string) => {
+    return toggleConnectedTool(toolId, 0);
+});
+
+// Remove connected tool
+ipcMain.handle('mcp:removeTool', async (_event, toolId: string) => {
+    return removeConnectedTool(toolId);
 });
