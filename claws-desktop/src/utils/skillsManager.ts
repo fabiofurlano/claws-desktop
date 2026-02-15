@@ -38,7 +38,7 @@ export class SkillsManager {
             description: 'Returns basic system information (platform, arch).',
             triggers: ['system info', 'os version', 'platform'],
             isEnabled: true,
-            execute: async (context: any) => {
+            execute: async (_context: any) => {
                 // In a real app, this would use IPC to get actual OS info
                 // For now, we return browser info as a fallback
                 if (typeof window !== 'undefined' && window.navigator) {

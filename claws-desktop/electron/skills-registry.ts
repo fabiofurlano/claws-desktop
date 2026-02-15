@@ -17,6 +17,17 @@ import type { Skill, SkillMetadata, SkillInstallResult, SkillSource } from '../s
 
 const execAsync = promisify(exec);
 
+/**
+ * Validate skill ID to prevent command injection
+ * Only allows alphanumeric characters, hyphens, underscores, and forward slashes
+ * Valid formats: "skill-name" or "owner/skill-name"
+ */
+function isValidSkillId(skillId: string): boolean {
+    // Allow format: owner/skill-name or skill-name
+    // Only alphanumeric, hyphens, underscores, forward slashes
+    return /^[a-zA-Z0-9/_-]+$/.test(skillId);
+}
+
 // Skills directory in userData
 function getSkillsDirectory(): string {
     const skillsDir = path.join(app.getPath('userData'), 'skills');
@@ -49,7 +60,7 @@ function parseSkillFile(skillPath: string, skillId: string): Skill | null {
             name: data.name || skillId,
             description: data.description || '',
             source,
-            isEnabled: true,
+            isEnabled: data.isEnabled ?? data.enabled ?? true,
             systemPrompt: content.trim() || undefined,
             license: data.license,
             allowedTools: data.tools || data.allowedTools,
@@ -96,6 +107,11 @@ export async function listInstalledSkills(): Promise<Skill[]> {
  * Install a skill using npx skills CLI
  */
 export async function installSkill(skillId: string): Promise<SkillInstallResult> {
+    // Validate skill ID to prevent command injection
+    if (!isValidSkillId(skillId)) {
+        return { success: false, error: 'Invalid skill ID format' };
+    }
+
     const skillsDir = getSkillsDirectory();
 
     try {
