@@ -22,6 +22,12 @@ declare global {
                 getProfile: () => Promise<unknown[]>;
                 getMemoryStats: () => Promise<{ patterns: number; preferences: number; conversations: number; messages: number }>;
             };
+            ai: {
+                streamCompletion: (request: { apiKey: string; baseUrl: string; model: string; messages: unknown[] }) => Promise<string>;
+                onChunk: (callback: (requestId: string, chunk: string) => void) => () => void;
+                onDone: (callback: (requestId: string) => void) => () => void;
+                onError: (callback: (requestId: string, error: string) => void) => () => void;
+            };
         };
     }
 }

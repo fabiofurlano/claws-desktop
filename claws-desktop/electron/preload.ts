@@ -27,6 +27,14 @@ export interface ElectronAPI {
         getProfile: () => Promise<unknown[]>;
         getMemoryStats: () => Promise<{ patterns: number; preferences: number; conversations: number; messages: number }>;
     };
+
+    // AI
+    ai: {
+        streamCompletion: (request: { apiKey: string; baseUrl: string; model: string; messages: unknown[] }) => Promise<string>;
+        onChunk: (callback: (requestId: string, chunk: string) => void) => () => void;
+        onDone: (callback: (requestId: string) => void) => () => void;
+        onError: (callback: (requestId: string, error: string) => void) => () => void;
+    };
 }
 
 const electronAPI: ElectronAPI = {
@@ -59,6 +67,27 @@ const electronAPI: ElectronAPI = {
         setProfileField: (key, value) => ipcRenderer.invoke('db:setProfileField', key, value),
         getProfile: () => ipcRenderer.invoke('db:getProfile'),
         getMemoryStats: () => ipcRenderer.invoke('db:getMemoryStats'),
+    },
+
+    // AI
+    ai: {
+        streamCompletion: (request: { apiKey: string; baseUrl: string; model: string; messages: unknown[] }) =>
+            ipcRenderer.invoke('ai:streamCompletion', request),
+        onChunk: (callback: (requestId: string, chunk: string) => void) => {
+            const handler = (_event: Electron.IpcRendererEvent, requestId: string, chunk: string) => callback(requestId, chunk);
+            ipcRenderer.on('ai:chunk', handler);
+            return () => ipcRenderer.removeListener('ai:chunk', handler);
+        },
+        onDone: (callback: (requestId: string) => void) => {
+            const handler = (_event: Electron.IpcRendererEvent, requestId: string) => callback(requestId);
+            ipcRenderer.on('ai:done', handler);
+            return () => ipcRenderer.removeListener('ai:done', handler);
+        },
+        onError: (callback: (requestId: string, error: string) => void) => {
+            const handler = (_event: Electron.IpcRendererEvent, requestId: string, error: string) => callback(requestId, error);
+            ipcRenderer.on('ai:error', handler);
+            return () => ipcRenderer.removeListener('ai:error', handler);
+        },
     },
 };
 

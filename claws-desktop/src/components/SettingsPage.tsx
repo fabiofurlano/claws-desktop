@@ -22,8 +22,8 @@ export function SettingsPage({ onClose }: { onClose: () => void }) {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in">
             <div
                 className={`w-[700px] max-h-[85vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col ${isAgent
-                        ? 'bg-agent-surface border border-agent-border'
-                        : 'bg-white border border-chat-border'
+                    ? 'bg-agent-surface border border-agent-border'
+                    : 'bg-white border border-chat-border'
                     }`}
             >
                 {/* Header */}
@@ -34,8 +34,8 @@ export function SettingsPage({ onClose }: { onClose: () => void }) {
                     <button
                         onClick={onClose}
                         className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isAgent
-                                ? 'hover:bg-agent-surfaceAlt text-agent-muted'
-                                : 'hover:bg-gray-100 text-chat-muted'
+                            ? 'hover:bg-agent-surfaceAlt text-agent-muted'
+                            : 'hover:bg-gray-100 text-chat-muted'
                             }`}
                     >
                         ✕
@@ -51,12 +51,12 @@ export function SettingsPage({ onClose }: { onClose: () => void }) {
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
                                 className={`w-full px-4 py-2.5 text-left text-sm flex items-center gap-2.5 transition-colors ${activeTab === tab.id
-                                        ? isAgent
-                                            ? 'bg-agent-primary/10 text-agent-primary font-medium'
-                                            : 'bg-chat-primary/10 text-chat-primary font-medium'
-                                        : isAgent
-                                            ? 'text-agent-muted hover:bg-agent-surfaceAlt'
-                                            : 'text-chat-muted hover:bg-gray-100'
+                                    ? isAgent
+                                        ? 'bg-agent-primary/10 text-agent-primary font-medium'
+                                        : 'bg-chat-primary/10 text-chat-primary font-medium'
+                                    : isAgent
+                                        ? 'text-agent-muted hover:bg-agent-surfaceAlt'
+                                        : 'text-chat-muted hover:bg-gray-100'
                                     }`}
                             >
                                 <span>{tab.icon}</span>
@@ -123,8 +123,8 @@ function ProvidersTab() {
                 <button
                     onClick={() => setShowAddForm(!showAddForm)}
                     className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${isAgent
-                            ? 'bg-agent-primary/20 text-agent-primary hover:bg-agent-primary/30'
-                            : 'bg-chat-primary/10 text-chat-primary hover:bg-chat-primary/20'
+                        ? 'bg-agent-primary/20 text-agent-primary hover:bg-agent-primary/30'
+                        : 'bg-chat-primary/10 text-chat-primary hover:bg-chat-primary/20'
                         }`}
                 >
                     + Add Provider
@@ -144,8 +144,8 @@ function ProvidersTab() {
                                 key={preset}
                                 onClick={() => handleAddPreset(preset)}
                                 className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${isAgent
-                                        ? 'border-agent-border bg-agent-surface text-agent-text hover:border-agent-primary'
-                                        : 'border-chat-border bg-white text-chat-text hover:border-chat-primary'
+                                    ? 'border-agent-border bg-agent-surface text-agent-text hover:border-agent-primary'
+                                    : 'border-chat-border bg-white text-chat-text hover:border-chat-primary'
                                     }`}
                             >
                                 {DEFAULT_PROVIDERS[preset].name}
@@ -207,12 +207,12 @@ function ProviderCard({
 
     return (
         <div className={`rounded-xl border p-4 transition-colors ${isActive
-                ? isAgent
-                    ? 'border-agent-primary/50 bg-agent-primary/5'
-                    : 'border-chat-primary/50 bg-chat-primary/5'
-                : isAgent
-                    ? 'border-agent-border bg-agent-surfaceAlt'
-                    : 'border-chat-border bg-gray-50'
+            ? isAgent
+                ? 'border-agent-primary/50 bg-agent-primary/5'
+                : 'border-chat-primary/50 bg-chat-primary/5'
+            : isAgent
+                ? 'border-agent-border bg-agent-surfaceAlt'
+                : 'border-chat-border bg-gray-50'
             }`}>
             {/* Provider header */}
             <div className="flex items-center justify-between mb-3">
@@ -230,8 +230,8 @@ function ProviderCard({
                         <button
                             onClick={onSetActive}
                             className={`text-xs px-2.5 py-1 rounded-lg transition-colors ${isAgent
-                                    ? 'text-agent-muted hover:bg-agent-surface'
-                                    : 'text-chat-muted hover:bg-white'
+                                ? 'text-agent-muted hover:bg-agent-surface'
+                                : 'text-chat-muted hover:bg-white'
                                 }`}
                         >
                             Set Active
@@ -259,15 +259,15 @@ function ProviderCard({
                             onChange={(e) => onUpdate({ apiKey: e.target.value })}
                             placeholder="sk-..."
                             className={`flex-1 px-3 py-1.5 rounded-lg text-sm border outline-none transition-colors ${isAgent
-                                    ? 'bg-agent-bg border-agent-border text-agent-text placeholder:text-agent-muted/50 focus:border-agent-primary'
-                                    : 'bg-white border-chat-border text-chat-text placeholder:text-chat-muted/50 focus:border-chat-primary'
+                                ? 'bg-agent-bg border-agent-border text-agent-text placeholder:text-agent-muted/50 focus:border-agent-primary'
+                                : 'bg-white border-chat-border text-chat-text placeholder:text-chat-muted/50 focus:border-chat-primary'
                                 }`}
                         />
                         <button
                             onClick={() => setShowApiKey(!showApiKey)}
                             className={`px-2.5 rounded-lg text-xs border transition-colors ${isAgent
-                                    ? 'border-agent-border text-agent-muted hover:bg-agent-surface'
-                                    : 'border-chat-border text-chat-muted hover:bg-white'
+                                ? 'border-agent-border text-agent-muted hover:bg-agent-surface'
+                                : 'border-chat-border text-chat-muted hover:bg-white'
                                 }`}
                         >
                             {showApiKey ? '🔒' : '👁️'}
@@ -285,8 +285,8 @@ function ProviderCard({
                         value={provider.model}
                         onChange={(e) => onUpdate({ model: e.target.value })}
                         className={`w-full mt-1 px-3 py-1.5 rounded-lg text-sm border outline-none transition-colors ${isAgent
-                                ? 'bg-agent-bg border-agent-border text-agent-text focus:border-agent-primary'
-                                : 'bg-white border-chat-border text-chat-text focus:border-chat-primary'
+                            ? 'bg-agent-bg border-agent-border text-agent-text focus:border-agent-primary'
+                            : 'bg-white border-chat-border text-chat-text focus:border-chat-primary'
                             }`}
                     />
                 </div>
@@ -301,8 +301,8 @@ function ProviderCard({
                         value={provider.baseUrl}
                         onChange={(e) => onUpdate({ baseUrl: e.target.value })}
                         className={`w-full mt-1 px-3 py-1.5 rounded-lg text-sm border outline-none transition-colors font-mono ${isAgent
-                                ? 'bg-agent-bg border-agent-border text-agent-text focus:border-agent-primary'
-                                : 'bg-white border-chat-border text-chat-text focus:border-chat-primary'
+                            ? 'bg-agent-bg border-agent-border text-agent-text focus:border-agent-primary'
+                            : 'bg-white border-chat-border text-chat-text focus:border-chat-primary'
                             }`}
                     />
                 </div>
@@ -313,8 +313,8 @@ function ProviderCard({
                         onClick={onTest}
                         disabled={!provider.apiKey || testResult === 'testing'}
                         className={`px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all disabled:opacity-40 ${isAgent
-                                ? 'bg-agent-primary/20 text-agent-primary hover:bg-agent-primary/30'
-                                : 'bg-chat-primary/10 text-chat-primary hover:bg-chat-primary/20'
+                            ? 'bg-agent-primary/20 text-agent-primary hover:bg-agent-primary/30'
+                            : 'bg-chat-primary/10 text-chat-primary hover:bg-chat-primary/20'
                             }`}
                     >
                         {testResult === 'testing' ? '⏳ Testing...' : '🔌 Test Connection'}

@@ -16,7 +16,9 @@
     "dist:win": "npm run build && electron-builder --win"
   },
   "dependencies": {
+    "@types/node-fetch": "^2.6.13",
     "better-sqlite3": "^12.6.2",
+    "node-fetch": "^2.7.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "zustand": "^4.5.0"

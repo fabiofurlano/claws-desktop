@@ -78,6 +78,31 @@ nativeTheme.on('updated', () => {
     mainWindow?.webContents.send('theme-changed', nativeTheme.shouldUseDarkColors ? 'dark' : 'light');
 });
 
+// IPC handlers — AI
+import { streamThinking } from './ai-service.js';
+
+ipcMain.handle('ai:streamCompletion', (event, request) => {
+    const requestId = Math.random().toString(36).substring(7);
+
+    streamThinking(
+        request,
+        (chunk) => {
+            if (!mainWindow) return;
+            mainWindow.webContents.send('ai:chunk', requestId, chunk);
+        },
+        () => {
+            if (!mainWindow) return;
+            mainWindow.webContents.send('ai:done', requestId);
+        },
+        (error) => {
+            if (!mainWindow) return;
+            mainWindow.webContents.send('ai:error', requestId, error);
+        }
+    );
+
+    return requestId;
+});
+
 // IPC handlers — Database: Conversations
 ipcMain.handle('db:createConversation', (_event, id: string, mode: string, title?: string) => {
     return createConversation(id, mode, title);
