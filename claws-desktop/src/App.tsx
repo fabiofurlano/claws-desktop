@@ -4,12 +4,16 @@ import { ModeSwitcher } from './components/ModeSwitcher';
 import { ChatMode } from './components/ChatMode';
 import { AgentMode } from './components/AgentMode';
 import { SettingsPage } from './components/SettingsPage';
+import { OnboardingWizard } from './components/OnboardingWizard';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 
 export function App() {
     const mode = useMode();
     const { toggleMode } = useModeActions();
     const [showSettings, setShowSettings] = useState(false);
+    const [showOnboarding, setShowOnboarding] = useState(() => {
+        return !localStorage.getItem('claws_onboarding_completed');
+    });
 
     const handleToggleMode = useCallback(() => {
         toggleMode();
@@ -108,6 +112,9 @@ export function App() {
 
             {/* Settings Modal */}
             {showSettings && <SettingsPage onClose={() => setShowSettings(false)} />}
+
+            {/* Onboarding Wizard */}
+            {showOnboarding && <OnboardingWizard onComplete={() => setShowOnboarding(false)} />}
         </div>
     );
 }
