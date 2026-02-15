@@ -1,14 +1,13 @@
-export interface Skill {
-    id: string;
-    name: string;
-    description: string;
-    triggers: string[]; // Keywords or phrases that might trigger this skill
-    execute: (context: any) => Promise<string | any>;
-    isEnabled: boolean;
-}
+import type { Skill } from '../types/skill';
+
+// Extended skill type for built-in skills with execution capability
+type BuiltInSkill = Skill & {
+    execute: (context: any) => Promise<any>;
+    triggers: string[];
+};
 
 export class SkillsManager {
-    private skills: Map<string, Skill> = new Map();
+    private skills: Map<string, BuiltInSkill> = new Map();
 
     constructor() {
         this.loadSkills();
@@ -24,6 +23,7 @@ export class SkillsManager {
             id: 'echo',
             name: 'Echo',
             description: 'Repeats back what you say.',
+            source: 'builtin',
             triggers: ['echo', 'repeat', 'say'],
             isEnabled: true,
             execute: async (context: any) => {
@@ -31,11 +31,12 @@ export class SkillsManager {
             },
         });
 
-        // System Info Skill (Placeholder)
+        // System Info Skill
         this.registerSkill({
             id: 'system_info',
             name: 'System Info',
             description: 'Returns basic system information (platform, arch).',
+            source: 'builtin',
             triggers: ['system info', 'os version', 'platform'],
             isEnabled: true,
             execute: async (_context: any) => {
@@ -49,7 +50,7 @@ export class SkillsManager {
         });
     }
 
-    public registerSkill(skill: Skill) {
+    public registerSkill(skill: BuiltInSkill) {
         this.skills.set(skill.id, skill);
     }
 
