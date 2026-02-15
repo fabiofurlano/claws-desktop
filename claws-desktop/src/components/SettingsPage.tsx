@@ -2,8 +2,9 @@ import { useState, useRef, useEffect } from 'react';
 import { useProviders, useActiveProviderId, useProviderActions, type ProviderConfig } from '../stores/provider-store';
 import { DEFAULT_PROVIDERS, testProviderConnection } from '../utils/aiProvider';
 import { useMode } from '../stores/mode-store';
+import { McpSettings } from './McpSettings';
 
-type SettingsTab = 'providers' | 'appearance' | 'data' | 'about';
+type SettingsTab = 'providers' | 'mcp' | 'appearance' | 'data' | 'about';
 
 // Model suggestions per provider type
 const MODEL_SUGGESTIONS: Record<string, { models: string[]; hint: string }> = {
@@ -45,10 +46,11 @@ export function SettingsPage({ onClose }: { onClose: () => void }) {
     const mode = useMode();
 
     const tabs: { id: SettingsTab; label: string; icon: string }[] = [
-        { id: 'providers', label: 'Providers', icon: '🔑' },
-        { id: 'appearance', label: 'Appearance', icon: '🎨' },
-        { id: 'data', label: 'Data', icon: '💾' },
-        { id: 'about', label: 'About', icon: 'ℹ️' },
+        { id: 'providers', label: 'Providers', icon: '#' },
+        { id: 'mcp', label: 'MCP', icon: '~' },
+        { id: 'appearance', label: 'Appearance', icon: '*' },
+        { id: 'data', label: 'Data', icon: '+' },
+        { id: 'about', label: 'About', icon: 'i' },
     ];
 
     const isAgent = mode === 'agent';
@@ -103,6 +105,7 @@ export function SettingsPage({ onClose }: { onClose: () => void }) {
                     {/* Content */}
                     <div className="flex-1 overflow-y-auto p-6">
                         {activeTab === 'providers' && <ProvidersTab />}
+                        {activeTab === 'mcp' && <McpSettings isAgent={isAgent} />}
                         {activeTab === 'appearance' && <AppearanceTab />}
                         {activeTab === 'data' && <DataTab />}
                         {activeTab === 'about' && <AboutTab />}
