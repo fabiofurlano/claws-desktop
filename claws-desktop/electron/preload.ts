@@ -35,6 +35,14 @@ export interface ElectronAPI {
         onDone: (callback: (requestId: string) => void) => () => void;
         onError: (callback: (requestId: string, error: string) => void) => () => void;
     };
+
+    // Skills
+    skills: {
+        list: () => Promise<import('../src/types/skill').Skill[]>;
+        install: (skillId: string) => Promise<import('../src/types/skill').SkillInstallResult>;
+        uninstall: (skillId: string) => Promise<{ success: boolean; error?: string }>;
+        search: (query?: string) => Promise<import('../src/types/skill').SkillMetadata[]>;
+    };
 }
 
 const electronAPI: ElectronAPI = {
@@ -88,6 +96,14 @@ const electronAPI: ElectronAPI = {
             ipcRenderer.on('ai:error', handler);
             return () => ipcRenderer.removeListener('ai:error', handler);
         },
+    },
+
+    // Skills
+    skills: {
+        list: () => ipcRenderer.invoke('skills:list'),
+        install: (skillId: string) => ipcRenderer.invoke('skills:install', skillId),
+        uninstall: (skillId: string) => ipcRenderer.invoke('skills:uninstall', skillId),
+        search: (query?: string) => ipcRenderer.invoke('skills:search', query),
     },
 };
 

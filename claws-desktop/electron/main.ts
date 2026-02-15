@@ -9,6 +9,12 @@ import {
     setProfileField, getProfile,
     getMemoryStats,
 } from './database';
+import {
+    listInstalledSkills,
+    installSkill,
+    uninstallSkill,
+    searchSkills,
+} from './skills-registry';
 
 // In CommonJS, __dirname is automatically available
 
@@ -145,4 +151,18 @@ ipcMain.handle('db:getProfile', () => {
 });
 ipcMain.handle('db:getMemoryStats', () => {
     return getMemoryStats();
+});
+
+// IPC handlers — Skills Registry
+ipcMain.handle('skills:list', async () => {
+    return listInstalledSkills();
+});
+ipcMain.handle('skills:install', async (_event, skillId: string) => {
+    return installSkill(skillId);
+});
+ipcMain.handle('skills:uninstall', async (_event, skillId: string) => {
+    return uninstallSkill(skillId);
+});
+ipcMain.handle('skills:search', async (_event, query?: string) => {
+    return searchSkills(query);
 });

@@ -28,6 +28,12 @@ declare global {
                 onDone: (callback: (requestId: string) => void) => () => void;
                 onError: (callback: (requestId: string, error: string) => void) => () => void;
             };
+            skills: {
+                list: () => Promise<import('../types/skill').Skill[]>;
+                install: (skillId: string) => Promise<import('../types/skill').SkillInstallResult>;
+                uninstall: (skillId: string) => Promise<{ success: boolean; error?: string }>;
+                search: (query?: string) => Promise<import('../types/skill').SkillMetadata[]>;
+            };
         };
     }
 }
