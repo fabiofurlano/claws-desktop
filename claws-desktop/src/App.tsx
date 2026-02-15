@@ -1,5 +1,6 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useMode, useModeActions } from './stores/mode-store';
+import { useAgentActions } from './stores/agent-store';
 import { ModeSwitcher } from './components/ModeSwitcher';
 import { ChatMode } from './components/ChatMode';
 import { AgentMode } from './components/AgentMode';
@@ -14,6 +15,12 @@ export function App() {
     const [showOnboarding, setShowOnboarding] = useState(() => {
         return !localStorage.getItem('claws_onboarding_completed');
     });
+
+    // Initialize Agent Store on mount
+    const { initialize: initAgentStore } = useAgentActions();
+    useEffect(() => {
+        initAgentStore();
+    }, [initAgentStore]);
 
     const handleToggleMode = useCallback(() => {
         toggleMode();

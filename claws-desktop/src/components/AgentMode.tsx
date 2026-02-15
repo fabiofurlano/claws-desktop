@@ -1,5 +1,5 @@
 import { useRef, useEffect } from 'react';
-import { useAgentMessages, useAgentIsTyping, useAgentIsLearning, useAgentActions, useAgentStore } from '../stores/agent-store';
+import { useAgentMessages, useAgentIsTyping, useAgentIsLearning, useAgentActions, useAgentStore, useAgentIsLoading } from '../stores/agent-store';
 import { useProviderStore } from '../stores/provider-store';
 import { sendToAI } from '../utils/aiProvider';
 import { Message } from './Message';
@@ -13,12 +13,15 @@ export function AgentMode() {
     const { addMessage, setIsTyping, updateMemory } = useAgentActions();
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
+    const isLoading = useAgentIsLoading();
+
     // Auto-scroll to bottom
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
 
     const handleSend = async (content: string) => {
+        // ... (existing handleSend logic)
         addMessage({ role: 'user', content });
         setIsTyping(true);
 
@@ -45,12 +48,11 @@ export function AgentMode() {
 
         // Record pattern if learning is on and message is substantial
         if (isLearning && content.length > 10) {
-            const currentPatterns = JSON.parse(localStorage.getItem('claws-agent') || '{}');
-            const patterns = currentPatterns?.state?.memory?.patterns || [];
+            const currentPatterns = useAgentStore.getState().memory.patterns || [];
 
             updateMemory({
                 patterns: [
-                    ...patterns,
+                    ...currentPatterns,
                     {
                         id: `pattern-${Date.now()}`,
                         type: 'interaction',
@@ -65,11 +67,23 @@ export function AgentMode() {
         setIsTyping(false);
     };
 
+    if (isLoading) {
+        return (
+            <div className="flex h-full items-center justify-center bg-agent-bg text-agent-muted">
+                <div className="flex flex-col items-center gap-4">
+                    <div className="w-8 h-8 border-2 border-agent-primary border-t-transparent rounded-full animate-spin" />
+                    <p className="text-sm">Accessing Neural Database...</p>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div
             className="flex h-full relative"
             style={{ background: 'var(--gradient-agent)' }}
         >
+            {/* ... rest of the render ... */}
             {/* Ambient glow effect */}
             <div
                 className="absolute inset-0 pointer-events-none"
