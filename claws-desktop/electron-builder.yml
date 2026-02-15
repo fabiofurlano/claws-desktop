@@ -1,0 +1,18 @@
+appId: com.claws.desktop
+productName: Claws
+directories:
+  buildResources: resources
+  output: release
+files:
+  - dist/**/*
+  - dist-electron/**/*
+mac:
+  category: public.app-category.productivity
+  target:
+    - dmg
+    - zip
+  darkModeSupport: true
+win:
+  target:
+    - nsis
+    - portable
