@@ -53,45 +53,75 @@ export async function sendToAI(
         // If we want to support Anthropic natively in backend, we should update ai-service.ts.
     }
 
-    // 3. Make IPC Call
-    return new Promise(async (resolve, reject) => {
+    // 3. Make IPC Call or Fallback to Fetch
+    if (window.electron && window.electron.ai) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const requestId = await window.electron.ai.streamCompletion({
+                    apiKey: provider.apiKey,
+                    baseUrl: provider.baseUrl,
+                    model: provider.model,
+                    messages: apiMessages,
+                });
+
+                let fullResponse = '';
+
+                const cleanupChunk = window.electron.ai.onChunk((id, chunk) => {
+                    if (id === requestId) fullResponse += chunk;
+                });
+
+                const cleanupDone = window.electron.ai.onDone((id) => {
+                    if (id === requestId) {
+                        cleanupChunk();
+                        cleanupDone();
+                        cleanupError();
+                        if (!fullResponse) resolve('No response received.');
+                        else resolve(fullResponse);
+                    }
+                });
+
+                const cleanupError = window.electron.ai.onError((id, error) => {
+                    if (id === requestId) {
+                        cleanupChunk();
+                        cleanupDone();
+                        cleanupError();
+                        reject(new Error(error));
+                    }
+                });
+
+            } catch (error) {
+                reject(error);
+            }
+        });
+    } else {
+        // Fallback for Web/Browser environment (Testing purposes)
         try {
-            const requestId = await window.electron.ai.streamCompletion({
-                apiKey: provider.apiKey,
-                baseUrl: provider.baseUrl,
-                model: provider.model,
-                messages: apiMessages,
+            console.warn('Electron IPC not found, falling back to direct fetch');
+            const response = await fetch(`${provider.baseUrl}/chat/completions`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${provider.apiKey}`,
+                },
+                body: JSON.stringify({
+                    model: provider.model,
+                    messages: apiMessages,
+                    stream: false // Simple fetch for test, no streaming in fallback yet
+                }),
             });
 
-            let fullResponse = '';
+            if (!response.ok) {
+                const errData = await response.json().catch(() => ({}));
+                throw new Error(`API Error: ${response.status} - ${JSON.stringify(errData)}`);
+            }
 
-            const cleanupChunk = window.electron.ai.onChunk((id, chunk) => {
-                if (id === requestId) fullResponse += chunk;
-            });
-
-            const cleanupDone = window.electron.ai.onDone((id) => {
-                if (id === requestId) {
-                    cleanupChunk();
-                    cleanupDone();
-                    cleanupError();
-                    if (!fullResponse) resolve('No response received.');
-                    else resolve(fullResponse);
-                }
-            });
-
-            const cleanupError = window.electron.ai.onError((id, error) => {
-                if (id === requestId) {
-                    cleanupChunk();
-                    cleanupDone();
-                    cleanupError();
-                    reject(new Error(error));
-                }
-            });
-
-        } catch (error) {
-            reject(error);
+            const data = await response.json();
+            return data.choices?.[0]?.message?.content || 'No response received.';
+        } catch (error: any) {
+            console.error('Fetch fallback failed:', error);
+            throw error;
         }
-    });
+    }
 }
 
 /**
