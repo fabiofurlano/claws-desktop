@@ -190,17 +190,10 @@ export const DEFAULT_PROVIDERS = {
         isActive: true,
     },
     zai: {
-        name: 'Z.AI (GLM Coding)',
+        name: 'Z.AI',
         apiKey: '',
-        model: 'glm-4.7',  // MUST be lowercase - Z.AI is case-sensitive
+        model: 'glm-5',  // Use glm-5 for Coding Plan
         baseUrl: 'https://api.z.ai/api/coding/paas/v4',
-        isActive: true,
-    },
-    zaiGlobal: {
-        name: 'Z.AI (GLM Global)',
-        apiKey: '',
-        model: 'glm-4.7',  // MUST be lowercase
-        baseUrl: 'https://api.z.ai/api/paas/v4',
         isActive: true,
     },
 } as const;
