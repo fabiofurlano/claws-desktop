@@ -37,6 +37,40 @@ Claws Desktop integrates with [Composio](https://composio.dev) to provide access
 
 Toggle connections on/off using the Enable/Disable button.
 
+## Browsing & Connecting Tools
+
+### Browse Available Tools
+
+1. Go to **Settings** → **MCP** tab
+2. Click **"Browse 250+ Tools"** button
+3. A modal opens showing all available tools
+4. Use the search bar to find specific tools
+5. Filter by category using the chips
+
+### Connect a Tool
+
+1. Find the tool you want (e.g., GitHub, Slack, Gmail)
+2. Click **"+ Connect"** button
+3. A new window opens for OAuth authorization
+4. Authorize the tool in your browser
+5. The tool shows **"● On"** with a green pulse when connected
+
+### Manage Connected Tools
+
+Once tools are connected, they appear as chips under your connection:
+
+- **Toggle On/Off**: Enable or disable without disconnecting
+- **Remove**: Click **×** to completely remove the connection
+- **Add More**: Click **"+ Add More"** to browse more tools
+
+### Connected Tools Status
+
+| Indicator | Meaning |
+|-----------|---------|
+| 🟢 Pulse | Tool is enabled and active |
+| ⚪ Gray dot | Tool is disabled |
+| 🔄 Spinner | OAuth connection in progress |
+
 ## MCP Access
 
 Composio tools are available via the MCP server at:
