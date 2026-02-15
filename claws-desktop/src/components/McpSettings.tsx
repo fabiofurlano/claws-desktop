@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import type { McpConnection } from '../types/electron';
+import { ToolsBrowser } from './ToolsBrowser';
+import { ConnectedToolsSection } from './ConnectedToolsSection';
 
 interface McpSettingsProps {
     isAgent: boolean;
@@ -13,6 +15,8 @@ export const McpSettings: React.FC<McpSettingsProps> = ({ isAgent }) => {
     const [newApiKey, setNewApiKey] = useState('');
     const [newConnectionName, setNewConnectionName] = useState('');
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
+    const [showToolsBrowser, setShowToolsBrowser] = useState(false);
+    const [activeConnection, setActiveConnection] = useState<McpConnection | null>(null);
 
     // Load existing connections on mount
     useEffect(() => {
@@ -245,6 +249,40 @@ export const McpSettings: React.FC<McpSettingsProps> = ({ isAgent }) => {
                 </div>
             )}
 
+            {/* Browse Tools button (when connection exists) */}
+            {connections.filter(c => c.is_enabled).length > 0 && !showAddForm && (
+                <button
+                    onClick={() => {
+                        const conn = connections.find(c => c.is_enabled);
+                        if (conn) {
+                            setActiveConnection(conn);
+                            setShowToolsBrowser(true);
+                        }
+                    }}
+                    className={`w-full p-4 rounded-xl border-2 border-dashed text-center transition-colors ${isAgent
+                        ? 'border-agent-border hover:border-agent-primary/50 text-agent-muted hover:text-agent-text'
+                        : 'border-chat-border hover:border-chat-primary/50 text-chat-muted hover:text-chat-text'
+                        }`}
+                >
+                    <span className="text-2xl mb-1 block">🔧</span>
+                    <span className="font-medium">Browse 250+ Tools</span>
+                    <span className="text-xs block mt-1">GitHub, Slack, Gmail, Notion & more</span>
+                </button>
+            )}
+
+            {/* Connected Tools Sections */}
+            {connections.filter(c => c.is_enabled).map(conn => (
+                <ConnectedToolsSection
+                    key={conn.id}
+                    isAgent={isAgent}
+                    connection={conn}
+                    onBrowseTools={() => {
+                        setActiveConnection(conn);
+                        setShowToolsBrowser(true);
+                    }}
+                />
+            ))}
+
             {/* Connections list */}
             {connections.length === 0 && !showAddForm ? (
                 <div className={`text-center py-12 rounded-xl border-2 border-dashed transition-colors ${isAgent
@@ -354,6 +392,19 @@ export const McpSettings: React.FC<McpSettingsProps> = ({ isAgent }) => {
                         Connected services are available via MCP at <code className={`px-1 py-0.5 rounded text-[10px] ${isAgent ? 'bg-agent-bg' : 'bg-white'}`}>http://127.0.0.1:3001/mcp</code>
                     </span>
                 </div>
+            )}
+
+            {/* Tools Browser Modal */}
+            {activeConnection && (
+                <ToolsBrowser
+                    isOpen={showToolsBrowser}
+                    onClose={() => {
+                        setShowToolsBrowser(false);
+                        setActiveConnection(null);
+                    }}
+                    isAgent={isAgent}
+                    connection={activeConnection}
+                />
             )}
         </div>
     );
