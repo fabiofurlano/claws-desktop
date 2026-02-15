@@ -3,6 +3,7 @@ import type { Message } from '../types/message';
 import type { ProviderConfig } from '../stores/provider-store';
 import type { Mode } from '../stores/mode-store';
 import { useSkillStore } from '../stores/skill-store';
+import { useAgentStore } from '../stores/agent-store';
 
 // System prompts for each mode
 const SYSTEM_PROMPTS: Record<Mode, string> = {
@@ -31,9 +32,18 @@ export async function sendToAI(
     // 1. Prepare System Message
     let systemContent = SYSTEM_PROMPTS[mode];
     if (mode === 'agent') {
-        const skillPrompts = useSkillStore.getState().getSkillPrompts();
-        if (skillPrompts) {
-            systemContent += skillPrompts;
+        // Get built-in skill prompts
+        const builtInPrompts = useSkillStore.getState().getSkillPrompts();
+        if (builtInPrompts) {
+            systemContent += builtInPrompts;
+        }
+
+        // Get Vercel/installed skill prompts from agent store
+        const agentSkills = useAgentStore.getState().skills;
+        const enabledVercelSkills = agentSkills.filter(s => s.isEnabled && s.source !== 'builtin' && s.systemPrompt);
+        if (enabledVercelSkills.length > 0) {
+            systemContent += '\n\n--- Installed Skills ---\n';
+            systemContent += enabledVercelSkills.map(s => s.systemPrompt).join('\n\n');
         }
     }
 
