@@ -1,0 +1,489 @@
+# Claws Desktop App — Detailed Implementation Plan
+
+> **Source Docs:** [SPECS-DESKTOP-APP.md](file:///Users/fabiofurlano/Downloads/clawdbot-main/claws-build-plan/docs/SPECS-DESKTOP-APP.md) · [IMPLEMENTATION-GUIDE.md](file:///Users/fabiofurlano/Downloads/clawdbot-main/claws-build-plan/docs/IMPLEMENTATION-GUIDE.md) · [CLAUDE.md](file:///Users/fabiofurlano/Downloads/AI-personal-agent/CLAUDE.md)
+>
+> **Project Location:** `/Users/fabiofurlano/Downloads/AI-personal-agent/claws-desktop/`
+> **Tech Stack:** Electron + React + TypeScript + Zustand + SQLite + TailwindCSS
+
+---
+
+## Phase 1 — MVP (Week 1)
+
+> **Goal:** A running Electron app with two switchable modes and one AI provider
+
+---
+
+### Task 1.1 · Initialize Project
+
+| | |
+|---|---|
+| **What** | Create `claws-desktop/` directory, run `npm init -y`, install core deps |
+| **Deliverables** | `package.json`, `tsconfig.json`, `tsconfig.electron.json`, `.gitignore`, initial `README.md` |
+| **Deps** | `electron`, `react`, `react-dom`, `typescript`, `zustand`, `vite`, `@vitejs/plugin-react`, `concurrently`, `wait-on`, `electron-builder` |
+| **Commit** | `chore: Initialize Electron + React + TypeScript project` |
+| **Time** | ~15 min |
+
+---
+
+### Task 1.2 · Create Directory Structure
+
+| | |
+|---|---|
+| **What** | Create all folders from the spec: `electron/ipc/`, `src/components/{ChatMode,AgentMode,common}/`, `src/{stores,hooks,utils}`, `resources/icons` |
+| **Commit** | `chore: Set up project directory structure` |
+| **Time** | ~5 min |
+
+---
+
+### Task 1.3 · Electron Main Process
+
+| | |
+|---|---|
+| **What** | Create `electron/main.ts` — BrowserWindow (1200×800), dev/prod URL loading, IPC handler for `get-app-path` |
+| **Deliverables** | `electron/main.ts` |
+| **Commit** | `feat: Add Electron main process` |
+| **Time** | ~15 min |
+
+---
+
+### Task 1.4 · Electron Preload Bridge
+
+| | |
+|---|---|
+| **What** | Create `electron/preload.ts` — expose `getAppPath`, `send`, `receive` via `contextBridge` |
+| **Deliverables** | `electron/preload.ts` |
+| **Commit** | `feat: Add Electron preload bridge` |
+| **Time** | ~10 min |
+
+---
+
+### Task 1.5 · Vite + Build Config
+
+| | |
+|---|---|
+| **What** | Create `vite.config.ts`, `index.html`, `electron-builder.yml` and npm scripts (`dev`, `build`, `dist:mac`, `dist:win`) |
+| **Deliverables** | `vite.config.ts`, `index.html`, `electron-builder.yml` |
+| **Commit** | `chore: Add Vite and Electron Builder configuration` |
+| **Time** | ~15 min |
+
+---
+
+### Task 1.6 · React Entry Point
+
+| | |
+|---|---|
+| **What** | Create `src/main.tsx` (ReactDOM render) and `src/App.tsx` (shell with header + ModeSwitcher + conditional mode rendering) |
+| **Deliverables** | `src/main.tsx`, `src/App.tsx` |
+| **Commit** | `feat: Add React entry point and App component` |
+| **Time** | ~10 min |
+
+---
+
+### Task 1.7 · Zustand Store — `useMode`
+
+| | |
+|---|---|
+| **What** | Create `src/stores/useMode.ts` — mode state (`chat` \| `agent`), `setMode()`, `toggleMode()`, persisted to localStorage |
+| **Key Detail** | Default mode is `chat`. Keyboard shortcut `Cmd/Ctrl+M` added later in Task 1.11 |
+| **Commit** | `feat: Add useMode Zustand store` |
+| **Time** | ~10 min |
+
+---
+
+### Task 1.8 · Zustand Store — `useChat`
+
+| | |
+|---|---|
+| **What** | Create `src/stores/useChat.ts` — messages array, `addMessage()` (keeps last 10), `clearMessages()`. **No persistence** (chat mode is private) |
+| **Commit** | `feat: Add useChat Zustand store` |
+| **Time** | ~10 min |
+
+---
+
+### Task 1.9 · Zustand Store — `useAgent`
+
+| | |
+|---|---|
+| **What** | Create `src/stores/useAgent.ts` — messages array, memory object (`userProfile`, `patterns`, `preferences`), `addMessage()`, `updateMemory()`, `learnPattern()`. **Persisted** via Zustand middleware |
+| **Commit** | `feat: Add useAgent Zustand store` |
+| **Time** | ~10 min |
+
+---
+
+### Task 1.10 · ModeSwitcher Component
+
+| | |
+|---|---|
+| **What** | Create `src/components/common/ModeSwitcher.tsx` — button toggles between 🤖 Agent / 💬 Chat labels |
+| **Commit** | `feat: Add ModeSwitcher component` |
+| **Time** | ~10 min |
+
+---
+
+### Task 1.11 · ChatMode Component
+
+| | |
+|---|---|
+| **What** | Create `src/components/ChatMode/ChatMode.tsx` — message list (scrollable), text input, send button, clear button. Clean, minimal, light theme |
+| **Key Detail** | Messages limited to last 10. No sidebar, no toolbars |
+| **Commit** | `feat: Add ChatMode component` |
+| **Time** | ~20 min |
+
+---
+
+### Task 1.12 · AgentMode Component
+
+| | |
+|---|---|
+| **What** | Create `src/components/AgentMode/AgentMode.tsx` — message list, input, send button, status bar (Ready \| Memory \| Learning), sidebar with memory info |
+| **Key Detail** | Dark theme. Shows pattern count and preference count from `useAgent` store |
+| **Commit** | `feat: Add AgentMode component` |
+| **Time** | ~25 min |
+
+---
+
+### Task 1.13 · Base Styling
+
+| | |
+|---|---|
+| **What** | Create `src/styles.css` — global reset, `.app.chat` (light) vs `.app.agent` (dark), header, messages, input area, sidebar, status bar, mode switcher button styles. Colors per spec: chat blue `#4A90E2`, agent green `#2ECC71` |
+| **Commit** | `style: Add base styling for Chat and Agent modes` |
+| **Time** | ~25 min |
+
+---
+
+### Task 1.14 · Keyboard Shortcut for Mode Switch
+
+| | |
+|---|---|
+| **What** | Add global `keydown` listener for `Cmd/Ctrl+M` to toggle mode. Add via `useEffect` in `App.tsx` |
+| **Commit** | `feat: Add Cmd/Ctrl+M keyboard shortcut for mode switching` |
+| **Time** | ~10 min |
+
+---
+
+### Task 1.15 · OpenAI Provider Integration
+
+| | |
+|---|---|
+| **What** | Create `src/utils/aiProvider.ts` — function `sendToAI(messages, mode)` that calls OpenAI API. Create `src/stores/useProviders.ts` — stores API key + selected model. Wire into both ChatMode and AgentMode `handleSend()` |
+| **Key Details** | Chat mode: `temperature: 0.7`, `max_tokens: ~1000`. Agent mode: `temperature: 0.3`, `max_tokens: ~4000`. API key stored locally (encrypted later) |
+| **Commit** | `feat: Integrate OpenAI as first AI provider` |
+| **Time** | ~30 min |
+
+---
+
+### Task 1.16 · First Full Test Run
+
+| | |
+|---|---|
+| **What** | Run `npm run dev`, verify: app opens, mode switching works, both modes render, messages send & display, keyboard shortcut works |
+| **Commit** | `chore: Verify MVP builds and runs correctly` |
+| **Time** | ~15 min |
+
+---
+
+## Phase 2 — Core Features (Weeks 2–3)
+
+> **Goal:** Memory persistence, skills system, multi-provider support, onboarding
+
+---
+
+### Task 2.1 · SQLite Database Setup
+
+| | |
+|---|---|
+| **What** | Install `better-sqlite3`. Create `src/utils/database.ts` — `initDatabase()` creates tables: `conversations`, `memory`, `patterns`, `skills`, `providers` (schema from SPECS) |
+| **Key Detail** | DB file at `~/Library/Application Support/Claws/claws_memory.db` (Mac) or `%APPDATA%/Claws/` (Windows) |
+| **Commit** | `feat: Add SQLite database initialization` |
+| **Time** | ~25 min |
+
+---
+
+### Task 2.2 · Memory System (Agent Mode)
+
+| | |
+|---|---|
+| **What** | Create `src/utils/memoryManager.ts` — CRUD functions for memory table: `saveMemory()`, `getMemory()`, `deleteMemory()`, `exportMemory()`. Integrate with `useAgent` store — persist memory to SQLite instead of just localStorage |
+| **Commit** | `feat: Implement persistent memory system` |
+| **Time** | ~30 min |
+
+---
+
+### Task 2.3 · Session Persistence
+
+| | |
+|---|---|
+| **What** | Create `src/utils/sessionManager.ts` — save/load full agent sessions to `sessions` table. Auto-save on each message. Load last session on startup |
+| **Commit** | `feat: Add session persistence for Agent mode` |
+| **Time** | ~20 min |
+
+---
+
+### Task 2.4 · Provider Settings UI
+
+| | |
+|---|---|
+| **What** | Create `src/components/common/ProviderSettings.tsx` — list of providers (OpenAI, Anthropic, etc.), API key input fields (password type), model selector dropdown, "Test Connection" button, active provider radio |
+| **Commit** | `feat: Add provider settings UI` |
+| **Time** | ~30 min |
+
+---
+
+### Task 2.5 · Multi-Provider Support
+
+| | |
+|---|---|
+| **What** | Extend `aiProvider.ts` to support Anthropic. Create provider adapter pattern: `OpenAIAdapter`, `AnthropicAdapter`. Store provider configs in SQLite `providers` table (encrypted API keys) |
+| **Commit** | `feat: Add multi-provider support (Anthropic)` |
+| **Time** | ~30 min |
+
+---
+
+### Task 2.6 · Settings Page
+
+| | |
+|---|---|
+| **What** | Create `src/components/common/Settings.tsx` — tabbed UI with sections: Providers, Appearance, Data (export/import/clear memory), About. Add gear icon in header to open settings |
+| **Commit** | `feat: Add Settings page with tabs` |
+| **Time** | ~30 min |
+
+---
+
+### Task 2.7 · Skills System Foundation
+
+| | |
+|---|---|
+| **What** | Create `src/utils/skillsManager.ts` — `loadSkills()` reads from `skills/` directory, `executeSkill()` dispatches to handler. Create skill interface: `id`, `name`, `description`, `triggers[]`, `handler`, `isActive` |
+| **Key Detail** | Skills stored at `~/Library/Application Support/Claws/skills/` |
+| **Commit** | `feat: Add skills system foundation` |
+| **Time** | ~25 min |
+
+---
+
+### Task 2.8 · Built-in Skills (First Two)
+
+| | |
+|---|---|
+| **What** | Create `writing-assistant` and `task-planning` skills as built-in defaults. Each has `skill.js` with trigger words and handler logic |
+| **Commit** | `feat: Add built-in Writing Assistant and Task Planning skills` |
+| **Time** | ~25 min |
+
+---
+
+### Task 2.9 · Skills UI in Sidebar
+
+| | |
+|---|---|
+| **What** | Create `src/components/AgentMode/SkillsList.tsx` — shows active/available skills, toggle enable/disable, skill info tooltip. Add to AgentMode sidebar |
+| **Commit** | `feat: Add skills list to Agent Mode sidebar` |
+| **Time** | ~20 min |
+
+---
+
+### Task 2.10 · Onboarding Wizard
+
+| | |
+|---|---|
+| **What** | Create `src/components/common/Onboarding.tsx` — 5-step wizard (Welcome → Mode Explanation → Provider Setup → Permissions → Ready). Track completion in localStorage. Show only on first launch |
+| **Commit** | `feat: Add onboarding wizard` |
+| **Time** | ~35 min |
+
+---
+
+### Task 2.11 · Memory Viewer in Sidebar
+
+| | |
+|---|---|
+| **What** | Create `src/components/AgentMode/MemoryViewer.tsx` — expandable tree: Profile, Patterns (count + list), Preferences. "Clear Memory" and "Export" buttons |
+| **Commit** | `feat: Add memory viewer to Agent Mode sidebar` |
+| **Time** | ~25 min |
+
+---
+
+## Phase 3 — Self-Learning Framework (Week 4)
+
+> **Goal:** The AI learns and improves over time
+
+---
+
+### Task 3.1 · Reflection Engine
+
+| | |
+|---|---|
+| **What** | Create `self-learning/reflection/reflectionEngine.ts` — `reflectOnInteraction()` extracts lessons, identifies patterns, stores reflections in SQLite. Runs after each agent interaction |
+| **Commit** | `feat: Add reflection engine for self-learning` |
+| **Time** | ~30 min |
+
+---
+
+### Task 3.2 · Pattern Recognition
+
+| | |
+|---|---|
+| **What** | Create `self-learning/patterns/patternRecognizer.ts` — `identifyPatterns()` matches interactions against known patterns, detects new patterns after 3+ occurrences, tracks pattern frequency |
+| **Commit** | `feat: Add pattern recognition system` |
+| **Time** | ~30 min |
+
+---
+
+### Task 3.3 · Skill Evolution
+
+| | |
+|---|---|
+| **What** | Create `self-learning/evolution/skillEvolver.ts` — `evolveSkill()` monitors skill success rate, generates improvements when below 85%, tests improvements before deploying |
+| **Commit** | `feat: Add skill evolution system` |
+| **Time** | ~30 min |
+
+---
+
+### Task 3.4 · Learning Indicators UI
+
+| | |
+|---|---|
+| **What** | Update status bar in Agent Mode to show real learning metrics: pattern discovery count, skill evolution log, learning progress percentage |
+| **Commit** | `feat: Add learning indicators to Agent Mode UI` |
+| **Time** | ~20 min |
+
+---
+
+### Task 3.5 · Pattern Discovery Notifications
+
+| | |
+|---|---|
+| **What** | Create toast notification component that appears when a new pattern is discovered or a skill evolves. Non-intrusive, dismissable |
+| **Commit** | `feat: Add pattern discovery notifications` |
+| **Time** | ~15 min |
+
+---
+
+## Phase 4 — Polish & Distribution (Week 5)
+
+> **Goal:** Production-ready app with great UX
+
+---
+
+### Task 4.1 · UI Refinements — Chat Mode
+
+| | |
+|---|---|
+| **What** | Polish Chat Mode: message bubbles with timestamps, typing indicator animation, smooth scroll to bottom, proper Inter/Fira Code fonts, responsive layout |
+| **Commit** | `style: Polish Chat Mode UI` |
+| **Time** | ~25 min |
+
+---
+
+### Task 4.2 · UI Refinements — Agent Mode
+
+| | |
+|---|---|
+| **What** | Polish Agent Mode: dark theme gradients, action indicators on messages, collapsible sidebar, code syntax highlighting in responses, markdown rendering |
+| **Commit** | `style: Polish Agent Mode UI` |
+| **Time** | ~30 min |
+
+---
+
+### Task 4.3 · Mode Transition Animations
+
+| | |
+|---|---|
+| **What** | Add smooth CSS transitions when switching modes: background color fade, sidebar slide in/out, status bar appear/disappear |
+| **Commit** | `style: Add mode transition animations` |
+| **Time** | ~15 min |
+
+---
+
+### Task 4.4 · Performance Optimization
+
+| | |
+|---|---|
+| **What** | Audit and optimize: lazy load Agent Mode components, memoize message list, debounce typing, virtualize long message lists. Target: Chat <200MB RAM, Agent <800MB |
+| **Commit** | `refactor: Optimize performance for target metrics` |
+| **Time** | ~25 min |
+
+---
+
+### Task 4.5 · API Key Encryption
+
+| | |
+|---|---|
+| **What** | Implement API key encryption using `electron-safeStorage` before storing in SQLite. Decrypt on read |
+| **Commit** | `feat: Add API key encryption` |
+| **Time** | ~20 min |
+
+---
+
+### Task 4.6 · Export/Import Data
+
+| | |
+|---|---|
+| **What** | Implement full data export (memory, patterns, sessions, settings) to JSON. Import from JSON with merge/replace option |
+| **Commit** | `feat: Add data export/import functionality` |
+| **Time** | ~20 min |
+
+---
+
+### Task 4.7 · Documentation
+
+| | |
+|---|---|
+| **What** | Write complete `README.md`: installation, usage, modes explanation, provider setup, contributing guide. Add inline JSDoc to all public functions |
+| **Commit** | `docs: Add comprehensive README and inline documentation` |
+| **Time** | ~30 min |
+
+---
+
+### Task 4.8 · Mac Build & Test
+
+| | |
+|---|---|
+| **What** | Run `npm run dist:mac`, test DMG install on macOS, verify app icon, verify auto-update config |
+| **Commit** | `chore: Verify Mac build and distribution` |
+| **Time** | ~20 min |
+
+---
+
+### Task 4.9 · Windows Build & Test
+
+| | |
+|---|---|
+| **What** | Run `npm run dist:win`, test NSIS installer, verify portable exe works |
+| **Commit** | `chore: Verify Windows build and distribution` |
+| **Time** | ~20 min |
+
+---
+
+### Task 4.10 · Full Test Suite
+
+| | |
+|---|---|
+| **What** | Run through complete testing checklist from SPECS: functionality tests (mode switching, memory, skills, providers, patterns), UX tests (onboarding, settings, memory viewer), performance tests (response times, memory usage, CPU, startup time) |
+| **Commit** | `test: Complete test suite validation` |
+| **Time** | ~30 min |
+
+---
+
+## Verification Plan
+
+### Automated Checks
+- `npm run build` — compiles without errors after each phase
+- `npm run dev` — app launches in dev mode
+- `npm run dist:mac` — produces DMG and ZIP (Phase 4)
+
+### Manual Verification (per phase)
+1. **Phase 1:** Open app → switch modes → send messages → verify keyboard shortcut → verify OpenAI responses
+2. **Phase 2:** Restart app → verify memory persists → add/check providers → run onboarding → toggle skills
+3. **Phase 3:** Send 5+ similar requests → verify patterns detected → check reflection log → verify skill metrics
+4. **Phase 4:** Full UX walkthrough → measure startup time (<3s) → check RAM usage → test export/import → install from DMG
+
+---
+
+## Summary
+
+| Phase | Tasks | Est. Time | Key Milestone |
+|-------|-------|-----------|---------------|
+| **1 — MVP** | 16 tasks | ~4 hours | App runs with 2 modes + OpenAI |
+| **2 — Core** | 11 tasks | ~5 hours | Memory, skills, onboarding |
+| **3 — Learning** | 5 tasks | ~2 hours | Self-improving AI |
+| **4 — Polish** | 10 tasks | ~4 hours | Production-ready |
+| **Total** | **42 tasks** | **~15 hours** | **Complete Claws Desktop App** |
