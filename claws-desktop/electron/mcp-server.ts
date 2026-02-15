@@ -6,6 +6,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { execSync } from 'child_process';
 import { getMemoryStats } from './database.js';
+import { initComposioFromStorage, getMcpToolDefinitions, executeToolAction, getComposio } from './composio-service.js';
 
 const MCP_PORT = 3001;
 
@@ -29,6 +30,9 @@ export async function startMcpServer(): Promise<void> {
             name: 'claws-desktop',
             version: '0.1.0',
         });
+
+        // Initialize Composio from stored credentials
+        initComposioFromStorage();
 
         // Register tools (will be added in Task 3)
         registerTools(mcpServer);
@@ -112,6 +116,65 @@ export async function stopMcpServer(): Promise<void> {
  */
 export function isMcpRunning(): boolean {
     return mcpServer !== null && httpServer !== null;
+}
+
+/**
+ * Register Composio tools as MCP tools.
+ * These are dynamic tools based on connected services.
+ */
+function registerComposioTools(server: McpServer): void {
+    try {
+        const composioClient = getComposio();
+
+        if (!composioClient) {
+            console.log('[MCP] No Composio client - skipping Composio tool registration');
+            return;
+        }
+
+        // Get tool definitions from our database
+        const toolDefs = getMcpToolDefinitions();
+
+        if (toolDefs.length === 0) {
+            console.log('[MCP] No Composio tools configured in database');
+            return;
+        }
+
+        toolDefs.forEach((def) => {
+            server.registerTool(
+                def.name,
+                {
+                    title: def.name,
+                    description: def.description,
+                    inputSchema: {
+                        action: z.string().describe('The action to perform'),
+                        params: z.record(z.string(), z.unknown()).optional().describe('Parameters for the action'),
+                    },
+                },
+                async (params: { action: string; params?: Record<string, any> }) => {
+                    const result = await executeToolAction(
+                        def.name.replace('composio_', ''),
+                        params.params || {},
+                        undefined
+                    );
+
+                    if (result.success) {
+                        return {
+                            content: [{ type: 'text', text: JSON.stringify(result.data, null, 2) }],
+                        };
+                    } else {
+                        return {
+                            content: [{ type: 'text', text: `Error: ${result.error}` }],
+                            isError: true,
+                        };
+                    }
+                }
+            );
+        });
+
+        console.log(`[MCP] Registered ${toolDefs.length} Composio tools`);
+    } catch (error) {
+        console.error('[MCP] Failed to register Composio tools:', error);
+    }
 }
 
 /**
@@ -235,4 +298,7 @@ function registerTools(server: McpServer): void {
     );
 
     console.log('[MCP] Registered 4 tools: read_git_log, read_file, get_memory_stats, run_claude_code');
+
+    // Register Composio tools (if configured)
+    registerComposioTools(server);
 }
