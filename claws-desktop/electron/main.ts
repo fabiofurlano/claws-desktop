@@ -8,6 +8,7 @@ import {
     setPreference, getPreferences,
     setProfileField, getProfile,
     getMemoryStats,
+    createMcpConnection, getMcpConnections, updateMcpConnection, deleteMcpConnection,
 } from './database';
 import {
     listInstalledSkills,
@@ -174,4 +175,33 @@ ipcMain.handle('skills:uninstall', async (_event, skillId: string) => {
 });
 ipcMain.handle('skills:search', async (_event, query?: string) => {
     return searchSkills(query);
+});
+
+// IPC handlers — MCP Connections
+ipcMain.handle('mcp:getConnections', async () => {
+    return getMcpConnections();
+});
+
+ipcMain.handle('mcp:createConnection', async (_event, data: { name: string; type: string; api_key: string }) => {
+    const id = `mcp-${Date.now()}`;
+    createMcpConnection({ id, ...data });
+    return { id };
+});
+
+ipcMain.handle('mcp:updateConnection', async (_event, id: string, updates: { api_key?: string; is_enabled?: number }) => {
+    return updateMcpConnection(id, updates);
+});
+
+ipcMain.handle('mcp:deleteConnection', async (_event, id: string) => {
+    return deleteMcpConnection(id);
+});
+
+ipcMain.handle('mcp:listTools', async (_event, apiKey: string) => {
+    try {
+        const { listAvailableTools } = await import('./composio-service.js');
+        return await listAvailableTools(apiKey);
+    } catch (error) {
+        console.error('[IPC] Failed to list tools:', error);
+        return [];
+    }
 });

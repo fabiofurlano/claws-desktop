@@ -1,13 +1,5 @@
 import React, { useState, useEffect } from 'react';
-
-interface McpConnection {
-    id: string;
-    name: string;
-    type: string;
-    api_key: string | null;
-    is_enabled: number;
-    created_at: number;
-}
+import type { McpConnection } from '../types/electron';
 
 interface McpSettingsProps {
     isAgent: boolean;
@@ -28,7 +20,7 @@ export const McpSettings: React.FC<McpSettingsProps> = ({ isAgent }) => {
 
     const loadConnections = async () => {
         try {
-            const conns = await window.electron.getMcpConnections();
+            const conns = await window.electron.mcp.getConnections();
             setConnections(conns || []);
         } catch (err) {
             console.error('Failed to load connections:', err);
@@ -46,7 +38,7 @@ export const McpSettings: React.FC<McpSettingsProps> = ({ isAgent }) => {
         setError(null);
 
         try {
-            await window.electron.createMcpConnection({
+            await window.electron.mcp.createConnection({
                 name: newConnectionName || 'Composio',
                 type: 'composio',
                 api_key: newApiKey,
@@ -68,7 +60,7 @@ export const McpSettings: React.FC<McpSettingsProps> = ({ isAgent }) => {
         if (!confirm('Delete this connection?')) return;
 
         try {
-            await window.electron.deleteMcpConnection(id);
+            await window.electron.mcp.deleteConnection(id);
             await loadConnections();
         } catch (err) {
             console.error('Failed to delete:', err);
@@ -78,7 +70,7 @@ export const McpSettings: React.FC<McpSettingsProps> = ({ isAgent }) => {
 
     const handleToggleConnection = async (id: string, isEnabled: boolean) => {
         try {
-            await window.electron.updateMcpConnection(id, { is_enabled: isEnabled ? 1 : 0 });
+            await window.electron.mcp.updateConnection(id, { is_enabled: isEnabled ? 1 : 0 });
             await loadConnections();
         } catch (err) {
             console.error('Failed to toggle:', err);

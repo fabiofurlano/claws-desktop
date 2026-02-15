@@ -1,5 +1,17 @@
 export { };
 
+// MCP Connection type
+export interface McpConnection {
+    id: string;
+    name: string;
+    type: string;
+    api_key: string | null;
+    is_enabled: number;
+    config: string | null;
+    created_at: number;
+    last_used: number | null;
+}
+
 declare global {
     interface Window {
         electron: {
@@ -33,6 +45,13 @@ declare global {
                 install: (skillId: string) => Promise<import('../types/skill').SkillInstallResult>;
                 uninstall: (skillId: string) => Promise<{ success: boolean; error?: string }>;
                 search: (query?: string) => Promise<import('../types/skill').SkillMetadata[]>;
+            };
+            mcp: {
+                getConnections: () => Promise<McpConnection[]>;
+                createConnection: (data: { name: string; type: string; api_key: string }) => Promise<{ id: string }>;
+                updateConnection: (id: string, updates: { api_key?: string; is_enabled?: number }) => Promise<unknown>;
+                deleteConnection: (id: string) => Promise<unknown>;
+                listTools: (apiKey: string) => Promise<unknown[]>;
             };
         };
     }

@@ -43,6 +43,15 @@ export interface ElectronAPI {
         uninstall: (skillId: string) => Promise<{ success: boolean; error?: string }>;
         search: (query?: string) => Promise<import('../src/types/skill').SkillMetadata[]>;
     };
+
+    // MCP Connections
+    mcp: {
+        getConnections: () => Promise<unknown[]>;
+        createConnection: (data: { name: string; type: string; api_key: string }) => Promise<{ id: string }>;
+        updateConnection: (id: string, updates: { api_key?: string; is_enabled?: number }) => Promise<unknown>;
+        deleteConnection: (id: string) => Promise<unknown>;
+        listTools: (apiKey: string) => Promise<unknown[]>;
+    };
 }
 
 const electronAPI: ElectronAPI = {
@@ -104,6 +113,19 @@ const electronAPI: ElectronAPI = {
         install: (skillId: string) => ipcRenderer.invoke('skills:install', skillId),
         uninstall: (skillId: string) => ipcRenderer.invoke('skills:uninstall', skillId),
         search: (query?: string) => ipcRenderer.invoke('skills:search', query),
+    },
+
+    // MCP Connections
+    mcp: {
+        getConnections: () => ipcRenderer.invoke('mcp:getConnections'),
+        createConnection: (data: { name: string; type: string; api_key: string }) =>
+            ipcRenderer.invoke('mcp:createConnection', data),
+        updateConnection: (id: string, updates: { api_key?: string; is_enabled?: number }) =>
+            ipcRenderer.invoke('mcp:updateConnection', id, updates),
+        deleteConnection: (id: string) =>
+            ipcRenderer.invoke('mcp:deleteConnection', id),
+        listTools: (apiKey: string) =>
+            ipcRenderer.invoke('mcp:listTools', apiKey),
     },
 };
 
