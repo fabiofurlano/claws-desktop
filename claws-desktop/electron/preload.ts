@@ -60,6 +60,18 @@ export interface ElectronAPI {
         disableTool: (toolId: string) => Promise<{ success: boolean; error?: string }>;
         removeTool: (toolId: string) => Promise<{ success: boolean; error?: string }>;
     };
+
+    // Automation
+    automation: {
+        list: () => Promise<unknown[]>;
+        create: (task: { name: string; type: 'cron' | 'hook'; trigger: string; action_type: 'prompt' | 'script'; action_data: string; is_active: boolean }) => Promise<string>;
+        toggle: (id: string) => Promise<boolean>;
+        delete: (id: string) => Promise<void>;
+    };
+
+    // Events
+    on: (channel: string, callback: (...args: unknown[]) => void) => () => void;
+    send: (channel: string, ...args: unknown[]) => void;
 }
 
 const electronAPI: ElectronAPI = {
@@ -150,6 +162,21 @@ const electronAPI: ElectronAPI = {
         removeTool: (toolId: string) =>
             ipcRenderer.invoke('mcp:removeTool', toolId),
     },
+
+    // Automation
+    automation: {
+        list: () => ipcRenderer.invoke('automation:list'),
+        create: (task) => ipcRenderer.invoke('automation:create', task),
+        toggle: (id) => ipcRenderer.invoke('automation:toggle', id),
+        delete: (id) => ipcRenderer.invoke('automation:delete', id),
+    },
+
+    // Events
+    on: (channel, callback) => {
+        ipcRenderer.on(channel, (_event, ...args) => callback(...args));
+        return () => ipcRenderer.removeAllListeners(channel);
+    },
+    send: (channel, ...args) => ipcRenderer.send(channel, ...args),
 };
 
 // Expose to renderer

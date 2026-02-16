@@ -96,6 +96,14 @@ declare global {
                 disableTool: (toolId: string) => Promise<unknown>;
                 removeTool: (toolId: string) => Promise<unknown>;
             };
+            automation: {
+                list: () => Promise<unknown[]>;
+                create: (task: { name: string; type: 'cron' | 'hook'; trigger: string; action_type: 'prompt' | 'script'; action_data: string; is_active: boolean }) => Promise<string>;
+                toggle: (id: string) => Promise<boolean>;
+                delete: (id: string) => Promise<void>;
+            };
+            on: (channel: string, callback: (...args: unknown[]) => void) => () => void;
+            send: (channel: string, ...args: unknown[]) => void;
         };
     }
 }

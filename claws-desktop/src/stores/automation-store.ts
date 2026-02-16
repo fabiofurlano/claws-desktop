@@ -31,7 +31,7 @@ export const useAutomationStore = create<AutomationState>((set, get) => ({
   fetchTasks: async () => {
     set({ isLoading: true, error: null });
     try {
-      const tasks = await window.electron.invoke('automation:list');
+      const tasks = await window.electron.automation.list();
       // Convert is_active from number to boolean
       const normalizedTasks = (tasks || []).map((t: any) => ({
         ...t,
@@ -47,7 +47,7 @@ export const useAutomationStore = create<AutomationState>((set, get) => ({
   createTask: async (task) => {
     set({ error: null });
     try {
-      await window.electron.invoke('automation:create', task);
+      await window.electron.automation.create(task);
       await get().fetchTasks();
     } catch (error) {
       console.error('Failed to create task:', error);
@@ -59,7 +59,7 @@ export const useAutomationStore = create<AutomationState>((set, get) => ({
   toggleTask: async (id) => {
     set({ error: null });
     try {
-      await window.electron.invoke('automation:toggle', id);
+      await window.electron.automation.toggle(id);
       await get().fetchTasks();
     } catch (error) {
       console.error('Failed to toggle task:', error);
@@ -70,7 +70,7 @@ export const useAutomationStore = create<AutomationState>((set, get) => ({
   deleteTask: async (id) => {
     set({ error: null });
     try {
-      await window.electron.invoke('automation:delete', id);
+      await window.electron.automation.delete(id);
       await get().fetchTasks();
     } catch (error) {
       console.error('Failed to delete task:', error);

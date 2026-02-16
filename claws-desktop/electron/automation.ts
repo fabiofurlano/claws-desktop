@@ -1,4 +1,4 @@
-import cron from 'node-cron';
+import cron, { ScheduledTask } from 'node-cron';
 import { EventEmitter } from 'events';
 import { v4 as uuidv4 } from 'uuid';
 import {
@@ -15,7 +15,7 @@ import {
 } from './database';
 
 const scheduler = new EventEmitter();
-const scheduledJobs = new Map<string, cron.ScheduledTask>();
+const scheduledJobs = new Map<string, ScheduledTask>();
 
 /**
  * Initialize automation system - load existing tasks and register hooks
@@ -50,7 +50,14 @@ export function initAutomation() {
 /**
  * Create a new automation task
  */
-export function createTask(task: Omit<AutomationTask, 'id' | 'created_at' | 'last_run'> & { is_active: boolean }) {
+export function createTask(task: {
+    name: string;
+    type: 'cron' | 'hook';
+    trigger: string;
+    action_type: 'prompt' | 'script';
+    action_data: string;
+    is_active: boolean;
+}) {
     const id = uuidv4();
 
     createAutomationTask({
