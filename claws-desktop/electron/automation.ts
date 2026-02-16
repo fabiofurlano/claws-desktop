@@ -1,4 +1,4 @@
-import cron, { ScheduledTask } from 'node-cron';
+import cron from 'node-cron';
 import { EventEmitter } from 'events';
 import { v4 as uuidv4 } from 'uuid';
 import {
@@ -15,7 +15,7 @@ import {
 } from './database';
 
 const scheduler = new EventEmitter();
-const scheduledJobs = new Map<string, ScheduledTask>();
+const scheduledJobs = new Map<string, cron.ScheduledTask>();
 
 /**
  * Initialize automation system - load existing tasks and register hooks
