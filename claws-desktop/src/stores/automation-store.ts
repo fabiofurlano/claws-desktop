@@ -12,11 +12,22 @@ export interface AutomationTask {
   last_run?: string;
 }
 
+export interface AutomationLog {
+  id: string;
+  task_id: string;
+  run_at: number;
+  status: 'success' | 'error';
+  output: string | null;
+}
+
 interface AutomationState {
   tasks: AutomationTask[];
+  logs: AutomationLog[];
   isLoading: boolean;
+  isLoadingLogs: boolean;
   error: string | null;
   fetchTasks: () => Promise<void>;
+  fetchLogs: (taskId?: string) => Promise<void>;
   createTask: (task: Omit<AutomationTask, 'id' | 'created_at'>) => Promise<void>;
   toggleTask: (id: string) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
@@ -25,7 +36,9 @@ interface AutomationState {
 
 export const useAutomationStore = create<AutomationState>((set, get) => ({
   tasks: [],
+  logs: [],
   isLoading: false,
+  isLoadingLogs: false,
   error: null,
 
   fetchTasks: async () => {
@@ -41,6 +54,22 @@ export const useAutomationStore = create<AutomationState>((set, get) => ({
     } catch (error) {
       console.error('Failed to fetch automation tasks:', error);
       set({ error: 'Failed to load tasks', isLoading: false, tasks: [] });
+    }
+  },
+
+  fetchLogs: async (taskId?: string) => {
+    set({ isLoadingLogs: true });
+    try {
+      const rawLogs = await window.electron.automation.getLogs(taskId);
+      // Cast the status field to the correct type
+      const logs = (rawLogs || []).map((l: any) => ({
+        ...l,
+        status: l.status as 'success' | 'error'
+      }));
+      set({ logs, isLoadingLogs: false });
+    } catch (error) {
+      console.error('Failed to fetch automation logs:', error);
+      set({ logs: [], isLoadingLogs: false });
     }
   },
 

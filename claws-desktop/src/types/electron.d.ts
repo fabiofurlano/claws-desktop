@@ -101,6 +101,7 @@ declare global {
                 create: (task: { name: string; type: 'cron' | 'hook'; trigger: string; action_type: 'prompt' | 'script'; action_data: string; is_active: boolean }) => Promise<string>;
                 toggle: (id: string) => Promise<boolean>;
                 delete: (id: string) => Promise<void>;
+                getLogs: (taskId?: string) => Promise<Array<{ id: string; task_id: string; run_at: number; status: string; output: string | null }>>;
             };
             on: (channel: string, callback: (...args: unknown[]) => void) => () => void;
             send: (channel: string, ...args: unknown[]) => void;

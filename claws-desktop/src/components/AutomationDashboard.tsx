@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useAutomationStore, AutomationTask } from '../stores/automation-store';
+import { useAutomationStore, AutomationTask, AutomationLog } from '../stores/automation-store';
 import { useMode } from '../stores/mode-store';
 
 interface AutomationDashboardProps {
@@ -7,9 +7,11 @@ interface AutomationDashboardProps {
 }
 
 export const AutomationDashboard: React.FC<AutomationDashboardProps> = ({ onClose }) => {
-  const { tasks, isLoading, fetchTasks, toggleTask, deleteTask } = useAutomationStore();
+  const { tasks, logs, isLoading, isLoadingLogs, fetchTasks, fetchLogs, toggleTask, deleteTask } = useAutomationStore();
   const mode = useMode();
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showLogsModal, setShowLogsModal] = useState(false);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
   const isAgent = mode === 'agent';
 
@@ -19,6 +21,12 @@ export const AutomationDashboard: React.FC<AutomationDashboardProps> = ({ onClos
 
   const cronTasks = tasks.filter(t => t.type === 'cron');
   const hooks = tasks.filter(t => t.type === 'hook');
+
+  const handleViewLogs = (taskId?: string) => {
+    setSelectedTaskId(taskId || null);
+    fetchLogs(taskId || undefined);
+    setShowLogsModal(true);
+  };
 
   return (
     <div className={`min-h-screen p-6 ${isAgent ? 'bg-agent-bg text-agent-text' : 'bg-chat-bg text-chat-text'}`}>
@@ -37,13 +45,22 @@ export const AutomationDashboard: React.FC<AutomationDashboardProps> = ({ onClos
             )}
             <h1 className="text-2xl font-bold">Automation Dashboard</h1>
           </div>
-          <button
-            onClick={() => setShowAddModal(true)}
-            className={`px-4 py-2 rounded-lg font-medium transition-all
-              ${isAgent ? 'bg-agent-primary text-white hover:bg-agent-primary/90' : 'bg-chat-primary text-white hover:bg-chat-primary/90'}`}
-          >
-            + Add Task
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => handleViewLogs()}
+              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors
+                ${isAgent ? 'bg-agent-surfaceAlt text-agent-muted hover:text-agent-text' : 'bg-gray-100 text-chat-muted hover:text-chat-text'}`}
+            >
+              📋 View All Logs
+            </button>
+            <button
+              onClick={() => setShowAddModal(true)}
+              className={`px-4 py-2 rounded-lg font-medium transition-all
+                ${isAgent ? 'bg-agent-primary text-white hover:bg-agent-primary/90' : 'bg-chat-primary text-white hover:bg-chat-primary/90'}`}
+            >
+              + Add Task
+            </button>
+          </div>
         </div>
 
         {isLoading ? (
@@ -62,7 +79,7 @@ export const AutomationDashboard: React.FC<AutomationDashboardProps> = ({ onClos
               ) : (
                 <div className="space-y-3">
                   {cronTasks.map(task => (
-                    <TaskCard key={task.id} task={task} isAgent={isAgent} onToggle={toggleTask} onDelete={deleteTask} />
+                    <TaskCard key={task.id} task={task} isAgent={isAgent} onToggle={toggleTask} onDelete={deleteTask} onViewLogs={handleViewLogs} />
                   ))}
                 </div>
               )}
@@ -78,7 +95,7 @@ export const AutomationDashboard: React.FC<AutomationDashboardProps> = ({ onClos
               ) : (
                 <div className="space-y-3">
                   {hooks.map(task => (
-                    <TaskCard key={task.id} task={task} isAgent={isAgent} onToggle={toggleTask} onDelete={deleteTask} />
+                    <TaskCard key={task.id} task={task} isAgent={isAgent} onToggle={toggleTask} onDelete={deleteTask} onViewLogs={handleViewLogs} />
                   ))}
                 </div>
               )}
@@ -88,6 +105,18 @@ export const AutomationDashboard: React.FC<AutomationDashboardProps> = ({ onClos
       </div>
 
       {showAddModal && <AddTaskModal isAgent={isAgent} onClose={() => setShowAddModal(false)} />}
+      {showLogsModal && (
+        <LogsModal
+          isAgent={isAgent}
+          logs={logs}
+          isLoading={isLoadingLogs}
+          tasks={tasks}
+          selectedTaskId={selectedTaskId}
+          onSelectTask={setSelectedTaskId}
+          onClose={() => setShowLogsModal(false)}
+          onRefresh={() => fetchLogs(selectedTaskId || undefined)}
+        />
+      )}
     </div>
   );
 };
@@ -99,7 +128,8 @@ const TaskCard: React.FC<{
   isAgent: boolean;
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
-}> = ({ task, isAgent, onToggle, onDelete }) => (
+  onViewLogs: (taskId?: string) => void;
+}> = ({ task, isAgent, onToggle, onDelete, onViewLogs }) => (
   <div className={`rounded-xl border p-4 ${isAgent ? 'bg-agent-surface border-agent-border' : 'bg-white border-chat-border'}`}>
     <div className="flex items-start justify-between">
       <div className="flex-1">
@@ -112,6 +142,13 @@ const TaskCard: React.FC<{
         </p>
       </div>
       <div className="flex items-center gap-2 ml-4">
+        <button
+          onClick={() => onViewLogs(task.id)}
+          className={`px-2 py-1 rounded text-xs font-medium transition-colors
+            ${isAgent ? 'bg-agent-surfaceAlt text-agent-muted hover:text-agent-text' : 'bg-gray-100 text-chat-muted hover:text-chat-text'}`}
+        >
+          Logs
+        </button>
         <button
           onClick={() => onToggle(task.id)}
           className={`px-2 py-1 rounded text-xs font-medium transition-colors
@@ -359,3 +396,112 @@ function formatSchedule(cron: string): string {
 
   return cron;
 }
+
+// ==================== Logs Modal ====================
+
+const LogsModal: React.FC<{
+  isAgent: boolean;
+  logs: AutomationLog[];
+  isLoading: boolean;
+  tasks: AutomationTask[];
+  selectedTaskId: string | null;
+  onSelectTask: (id: string | null) => void;
+  onClose: () => void;
+  onRefresh: () => void;
+}> = ({ isAgent, logs, isLoading, tasks, selectedTaskId, onSelectTask, onClose, onRefresh }) => {
+  const getTaskName = (taskId: string) => {
+    const task = tasks.find(t => t.id === taskId);
+    return task?.name || taskId;
+  };
+
+  const formatDate = (timestamp: number) => {
+    return new Date(timestamp).toLocaleString();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <div
+        className={`w-full max-w-2xl max-h-[80vh] rounded-xl flex flex-col ${isAgent ? 'bg-agent-surface border border-agent-border' : 'bg-white'}`}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className={`flex items-center justify-between px-6 py-4 border-b ${isAgent ? 'border-agent-border' : 'border-chat-border'}`}>
+          <div className="flex items-center gap-4">
+            <h2 className="text-lg font-bold">Execution Logs</h2>
+            <select
+              value={selectedTaskId || 'all'}
+              onChange={(e) => onSelectTask(e.target.value === 'all' ? null : e.target.value)}
+              className={`px-2 py-1 rounded-lg text-sm border ${isAgent ? 'bg-agent-bg border-agent-border text-agent-text' : 'bg-white border-chat-border text-chat-text'}`}
+            >
+              <option value="all">All Tasks</option>
+              {tasks.map(task => (
+                <option key={task.id} value={task.id}>{task.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onRefresh}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
+                ${isAgent ? 'bg-agent-surfaceAlt text-agent-muted hover:text-agent-text' : 'bg-gray-100 text-chat-muted hover:text-chat-text'}`}
+            >
+              🔄 Refresh
+            </button>
+            <button
+              onClick={onClose}
+              className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors
+                ${isAgent ? 'hover:bg-agent-surfaceAlt text-agent-muted' : 'hover:bg-gray-100 text-chat-muted'}`}
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-4">
+          {isLoading ? (
+            <div className="text-center py-8">
+              <p className={isAgent ? 'text-agent-muted' : 'text-chat-muted'}>Loading logs...</p>
+            </div>
+          ) : logs.length === 0 ? (
+            <div className={`text-center py-8 rounded-xl border ${isAgent ? 'border-agent-border' : 'border-chat-border'}`}>
+              <div className="text-3xl mb-2">📭</div>
+              <p className={isAgent ? 'text-agent-muted' : 'text-chat-muted'}>No logs yet</p>
+              <p className={`text-xs mt-1 ${isAgent ? 'text-agent-muted/60' : 'text-chat-muted/60'}`}>
+                Logs will appear here after tasks run
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {logs.map((log) => (
+                <div
+                  key={log.id}
+                  className={`rounded-lg border p-3 ${isAgent ? 'bg-agent-bg border-agent-border' : 'bg-gray-50 border-chat-border'}`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-medium text-sm">{getTaskName(log.task_id)}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                      log.status === 'success'
+                        ? 'bg-green-500/20 text-green-500'
+                        : 'bg-red-500/20 text-red-500'
+                    }`}>
+                      {log.status === 'success' ? '✅ Success' : '❌ Error'}
+                    </span>
+                  </div>
+                  <p className={`text-xs mb-1 ${isAgent ? 'text-agent-muted' : 'text-chat-muted'}`}>
+                    {formatDate(log.run_at)}
+                  </p>
+                  {log.output && (
+                    <pre className={`text-xs p-2 rounded mt-2 overflow-x-auto ${isAgent ? 'bg-agent-surfaceAlt text-agent-muted' : 'bg-white text-chat-muted'}`}>
+                      {log.output}
+                    </pre>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};

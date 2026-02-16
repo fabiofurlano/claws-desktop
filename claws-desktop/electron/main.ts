@@ -10,6 +10,7 @@ import {
     getMemoryStats,
     createMcpConnection, getMcpConnections, updateMcpConnection, deleteMcpConnection,
     getConnectedTools, addConnectedTool, toggleConnectedTool, removeConnectedTool,
+    getAutomationLogs,
 } from './database';
 import {
     listInstalledSkills,
@@ -338,6 +339,10 @@ ipcMain.handle('automation:toggle', async (_event, id: string) => {
 
 ipcMain.handle('automation:delete', async (_event, id: string) => {
     return deleteTask(id);
+});
+
+ipcMain.handle('automation:getLogs', async (_event, taskId?: string) => {
+    return getAutomationLogs(taskId);
 });
 
 // Listen for open-automation-dashboard event

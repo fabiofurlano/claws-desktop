@@ -4,7 +4,7 @@ import { DEFAULT_PROVIDERS, testProviderConnection } from '../utils/aiProvider';
 import { useMode } from '../stores/mode-store';
 import { McpSettings } from './McpSettings';
 
-type SettingsTab = 'providers' | 'mcp' | 'agent-config' | 'agent-skills' | 'appearance' | 'data' | 'about';
+type SettingsTab = 'providers' | 'mcp' | 'agent-config' | 'agent-skills' | 'automation' | 'appearance' | 'data' | 'about';
 
 // Model suggestions per provider type
 const MODEL_SUGGESTIONS: Record<string, { models: string[]; hint: string }> = {
@@ -50,6 +50,7 @@ export function SettingsPage({ onClose }: { onClose: () => void }) {
         { id: 'mcp', label: 'MCP', icon: '~' },
         { id: 'agent-config', label: 'Agent', icon: '🤖' },
         { id: 'agent-skills', label: 'Skills', icon: '⚡' },
+        { id: 'automation', label: 'Automation', icon: '⚙️' },
         { id: 'appearance', label: 'Appearance', icon: '*' },
         { id: 'data', label: 'Data', icon: '+' },
         { id: 'about', label: 'About', icon: 'i' },
@@ -110,6 +111,7 @@ export function SettingsPage({ onClose }: { onClose: () => void }) {
                         {activeTab === 'mcp' && <McpSettings isAgent={isAgent} />}
                         {activeTab === 'agent-config' && <AgentConfigTab isAgent={isAgent} />}
                         {activeTab === 'agent-skills' && <AgentSkillsTab isAgent={isAgent} />}
+                        {activeTab === 'automation' && <AutomationTab isAgent={isAgent} />}
                         {activeTab === 'appearance' && <AppearanceTab />}
                         {activeTab === 'data' && <DataTab />}
                         {activeTab === 'about' && <AboutTab />}
@@ -642,6 +644,68 @@ function AgentSkillsTab({ isAgent }: { isAgent: boolean }) {
                 <p className={`text-xs mt-4 ${isAgent ? 'text-agent-muted/60' : 'text-chat-muted/60'}`}>
                     Full skills integration coming soon
                 </p>
+            </div>
+        </div>
+    );
+}
+
+// ==================== Automation Tab ====================
+
+function AutomationTab({ isAgent }: { isAgent: boolean }) {
+    const handleOpenAutomation = () => {
+        window.electron.send('open-automation-dashboard');
+    };
+
+    return (
+        <div className="space-y-4">
+            <div>
+                <h3 className={`text-base font-semibold ${isAgent ? 'text-agent-text' : 'text-chat-text'}`}>
+                    Automation
+                </h3>
+                <p className={`text-sm ${isAgent ? 'text-agent-muted' : 'text-chat-muted'}`}>
+                    Schedule tasks and set up event hooks for your agent
+                </p>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="space-y-3">
+                <button
+                    onClick={handleOpenAutomation}
+                    className={`w-full px-4 py-4 rounded-xl text-left transition-all flex items-center justify-between border
+                        ${isAgent
+                            ? 'bg-agent-surfaceAlt text-agent-text hover:bg-agent-surface border-agent-border hover:border-agent-primary'
+                            : 'bg-gray-50 text-chat-text hover:bg-gray-100 border-chat-border hover:border-chat-primary'
+                        }`}
+                >
+                    <div className="flex items-center gap-3">
+                        <span className="text-2xl">⚙️</span>
+                        <div>
+                            <p className="font-medium">Open Automation Dashboard</p>
+                            <p className={`text-sm ${isAgent ? 'text-agent-muted' : 'text-chat-muted'}`}>
+                                Create scheduled tasks, view execution logs
+                            </p>
+                        </div>
+                    </div>
+                    <span className={`text-lg ${isAgent ? 'text-agent-muted' : 'text-chat-muted'}`}>→</span>
+                </button>
+            </div>
+
+            {/* Info Cards */}
+            <div className="grid grid-cols-2 gap-3 mt-4">
+                <div className={`rounded-xl border p-4 ${isAgent ? 'border-agent-border bg-agent-surfaceAlt' : 'border-chat-border bg-gray-50'}`}>
+                    <div className="text-xl mb-2">📅</div>
+                    <p className={`font-medium text-sm ${isAgent ? 'text-agent-text' : 'text-chat-text'}`}>Scheduled Tasks</p>
+                    <p className={`text-xs mt-1 ${isAgent ? 'text-agent-muted' : 'text-chat-muted'}`}>
+                        Run prompts or scripts at specific times
+                    </p>
+                </div>
+                <div className={`rounded-xl border p-4 ${isAgent ? 'border-agent-border bg-agent-surfaceAlt' : 'border-chat-border bg-gray-50'}`}>
+                    <div className="text-xl mb-2">⚡</div>
+                    <p className={`font-medium text-sm ${isAgent ? 'text-agent-text' : 'text-chat-text'}`}>Event Hooks</p>
+                    <p className={`text-xs mt-1 ${isAgent ? 'text-agent-muted' : 'text-chat-muted'}`}>
+                        Trigger actions on app events
+                    </p>
+                </div>
             </div>
         </div>
     );

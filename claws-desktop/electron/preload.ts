@@ -67,6 +67,7 @@ export interface ElectronAPI {
         create: (task: { name: string; type: 'cron' | 'hook'; trigger: string; action_type: 'prompt' | 'script'; action_data: string; is_active: boolean }) => Promise<string>;
         toggle: (id: string) => Promise<boolean>;
         delete: (id: string) => Promise<void>;
+        getLogs: (taskId?: string) => Promise<Array<{ id: string; task_id: string; run_at: number; status: string; output: string | null }>>;
     };
 
     // Events
@@ -169,6 +170,7 @@ const electronAPI: ElectronAPI = {
         create: (task) => ipcRenderer.invoke('automation:create', task),
         toggle: (id) => ipcRenderer.invoke('automation:toggle', id),
         delete: (id) => ipcRenderer.invoke('automation:delete', id),
+        getLogs: (taskId) => ipcRenderer.invoke('automation:getLogs', taskId),
     },
 
     // Events
