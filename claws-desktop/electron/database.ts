@@ -127,9 +127,37 @@ export function initDatabase(): Database.Database {
         CREATE INDEX IF NOT EXISTS idx_conversations_mode ON conversations(mode);
         CREATE INDEX IF NOT EXISTS idx_conversations_updated ON conversations(updated_at);
 
+        -- Automation Tasks (scheduled tasks and event hooks)
+        CREATE TABLE IF NOT EXISTS automation_tasks (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            type TEXT NOT NULL CHECK(type IN ('cron', 'hook')),
+            trigger TEXT NOT NULL,
+            action_type TEXT NOT NULL CHECK(action_type IN ('prompt', 'script')),
+            action_data TEXT NOT NULL,
+            is_active INTEGER NOT NULL DEFAULT 1,
+            created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000),
+            last_run INTEGER
+        );
+
+        -- Automation execution logs
+        CREATE TABLE IF NOT EXISTS automation_logs (
+            id TEXT PRIMARY KEY,
+            task_id TEXT NOT NULL,
+            run_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000),
+            status TEXT NOT NULL,
+            output TEXT,
+            FOREIGN KEY (task_id) REFERENCES automation_tasks(id) ON DELETE CASCADE
+        );
+
         -- Index for fast tool lookup
         CREATE INDEX IF NOT EXISTS idx_connected_tools_connection ON connected_tools(connection_id);
         CREATE INDEX IF NOT EXISTS idx_connected_tools_enabled ON connected_tools(is_enabled);
+
+        -- Index for automation lookups
+        CREATE INDEX IF NOT EXISTS idx_automation_tasks_type ON automation_tasks(type);
+        CREATE INDEX IF NOT EXISTS idx_automation_tasks_active ON automation_tasks(is_active);
+        CREATE INDEX IF NOT EXISTS idx_automation_logs_task ON automation_logs(task_id);
     `);
 
     return db;
@@ -372,4 +400,104 @@ export function toggleConnectedTool(id: string, is_enabled: number) {
     return getDatabase()
         .prepare('UPDATE connected_tools SET is_enabled = ? WHERE id = ?')
         .run(is_enabled, id);
+}
+
+// ==================== AUTOMATION TASKS ====================
+
+export interface AutomationTask {
+    id: string;
+    name: string;
+    type: 'cron' | 'hook';
+    trigger: string;
+    action_type: 'prompt' | 'script';
+    action_data: string;
+    is_active: number;
+    created_at: number;
+    last_run: number | null;
+}
+
+export function createAutomationTask(task: {
+    id: string;
+    name: string;
+    type: 'cron' | 'hook';
+    trigger: string;
+    action_type: 'prompt' | 'script';
+    action_data: string;
+    is_active?: boolean;
+}) {
+    return getDatabase()
+        .prepare(
+            'INSERT INTO automation_tasks (id, name, type, trigger, action_type, action_data, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)'
+        )
+        .run(task.id, task.name, task.type, task.trigger, task.action_type, task.action_data, task.is_active ? 1 : 0);
+}
+
+export function getAutomationTasks() {
+    return getDatabase()
+        .prepare('SELECT * FROM automation_tasks ORDER BY created_at DESC')
+        .all() as AutomationTask[];
+}
+
+export function getAutomationTask(id: string) {
+    return getDatabase()
+        .prepare('SELECT * FROM automation_tasks WHERE id = ?')
+        .get(id) as AutomationTask | undefined;
+}
+
+export function getActiveAutomationTasks() {
+    return getDatabase()
+        .prepare('SELECT * FROM automation_tasks WHERE is_active = 1')
+        .all() as AutomationTask[];
+}
+
+export function toggleAutomationTask(id: string, is_active: boolean) {
+    return getDatabase()
+        .prepare('UPDATE automation_tasks SET is_active = ? WHERE id = ?')
+        .run(is_active ? 1 : 0, id);
+}
+
+export function updateAutomationTaskLastRun(id: string) {
+    return getDatabase()
+        .prepare('UPDATE automation_tasks SET last_run = ? WHERE id = ?')
+        .run(Date.now(), id);
+}
+
+export function deleteAutomationTask(id: string) {
+    return getDatabase()
+        .prepare('DELETE FROM automation_tasks WHERE id = ?')
+        .run(id);
+}
+
+// ==================== AUTOMATION LOGS ====================
+
+export interface AutomationLog {
+    id: string;
+    task_id: string;
+    run_at: number;
+    status: 'success' | 'error';
+    output: string | null;
+}
+
+export function createAutomationLog(log: {
+    id: string;
+    task_id: string;
+    status: 'success' | 'error';
+    output?: string;
+}) {
+    return getDatabase()
+        .prepare(
+            'INSERT INTO automation_logs (id, task_id, run_at, status, output) VALUES (?, ?, ?, ?, ?)'
+        )
+        .run(log.id, log.task_id, Date.now(), log.status, log.output || null);
+}
+
+export function getAutomationLogs(taskId?: string) {
+    if (taskId) {
+        return getDatabase()
+            .prepare('SELECT * FROM automation_logs WHERE task_id = ? ORDER BY run_at DESC LIMIT 100')
+            .all(taskId) as AutomationLog[];
+    }
+    return getDatabase()
+        .prepare('SELECT * FROM automation_logs ORDER BY run_at DESC LIMIT 100')
+        .all() as AutomationLog[];
 }
