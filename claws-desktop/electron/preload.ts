@@ -51,6 +51,7 @@ export interface ElectronAPI {
         updateConnection: (id: string, updates: { api_key?: string; is_enabled?: number }) => Promise<unknown>;
         deleteConnection: (id: string) => Promise<unknown>;
         listTools: (apiKey: string) => Promise<unknown[]>;
+        listAuthConfigs: () => Promise<Array<{ id: string; toolkitSlug: string; toolkitName: string; name: string; mode: string }>>;
         // Tool management
         getConnectedTools: (connectionId?: string) => Promise<unknown[]>;
         connectTool: (toolSlug: string) => Promise<{ success: boolean; toolId?: string; error?: string }>;
@@ -133,6 +134,8 @@ const electronAPI: ElectronAPI = {
             ipcRenderer.invoke('mcp:deleteConnection', id),
         listTools: (apiKey: string) =>
             ipcRenderer.invoke('mcp:listTools', apiKey),
+        listAuthConfigs: () =>
+            ipcRenderer.invoke('mcp:listAuthConfigs'),
         // Tool management
         getConnectedTools: (connectionId?: string) =>
             ipcRenderer.invoke('mcp:getConnectedTools', connectionId),

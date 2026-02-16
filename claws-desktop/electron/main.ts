@@ -207,6 +207,17 @@ ipcMain.handle('mcp:listTools', async (_event, apiKey: string) => {
     }
 });
 
+// List auth configs - shows what integrations user has configured in Composio
+ipcMain.handle('mcp:listAuthConfigs', async () => {
+    try {
+        const { listAuthConfigs } = await import('./composio-service.js');
+        return await listAuthConfigs();
+    } catch (error) {
+        console.error('[IPC] Failed to list auth configs:', error);
+        return [];
+    }
+});
+
 // IPC handlers — Connected Tools
 // Get connected tools from database
 ipcMain.handle('mcp:getConnectedTools', async (_event, connectionId?: string) => {
@@ -215,27 +226,49 @@ ipcMain.handle('mcp:getConnectedTools', async (_event, connectionId?: string) =>
 
 // Connect a tool (initiate OAuth)
 ipcMain.handle('mcp:connectTool', async (_event, toolSlug: string) => {
+    console.log(`[IPC] mcp:connectTool called with toolSlug: ${toolSlug}`);
+
     try {
-        const { connectTool, getToolkitDetails } = await import('./composio-service.js');
+        const { connectTool, getToolkitDetails, listAuthConfigs } = await import('./composio-service.js');
 
         // Get active Composio connection
         const connections = getMcpConnections();
         const composioConn = connections.find(c => c.type === 'composio' && c.is_enabled && c.api_key);
 
         if (!composioConn) {
+            console.error('[IPC] No active Composio connection found');
             throw new Error('No active Composio connection');
         }
 
+        console.log(`[IPC] Using connection: ${composioConn.id}`);
+
         // Get toolkit details to find authConfigId
+        console.log(`[IPC] Getting toolkit details for: ${toolSlug}`);
         const toolkit = await getToolkitDetails(toolSlug);
+        console.log(`[IPC] Toolkit authConfigDetails:`, toolkit.authConfigDetails);
+
         const authConfig = toolkit.authConfigDetails?.[0];
 
         if (!authConfig?.id) {
-            throw new Error('No auth config found for this tool');
+            // Get all auth configs to show user what's available
+            console.log(`[IPC] No auth config found, listing all available...`);
+            const allConfigs = await listAuthConfigs();
+            const availableToolkits = [...new Set(allConfigs.map(c => c.toolkitSlug))].join(', ');
+
+            console.error(`[IPC] Available toolkits: ${availableToolkits}`);
+            throw new Error(
+                `No auth config found for "${toolSlug}". ` +
+                `You need to create an auth config in Composio dashboard first. ` +
+                `Available toolkits with configs: ${availableToolkits || 'none'}`
+            );
         }
 
+        console.log(`[IPC] Found auth config: ${authConfig.id} (${authConfig.name}) for ${toolSlug}`);
+
         // Initiate connection
+        console.log(`[IPC] Creating connection link...`);
         const result = await connectTool('default-user', authConfig.id);
+        console.log(`[IPC] Connection created:`, result);
 
         // Store pending connection in database
         const toolId = `tool-${Date.now()}`;
@@ -246,6 +279,8 @@ ipcMain.handle('mcp:connectTool', async (_event, toolSlug: string) => {
             tool_slug: toolSlug,
             config: JSON.stringify({ pendingConnectionId: result.connectionId }),
         });
+
+        console.log(`[IPC] Tool stored in database with id: ${toolId}`);
 
         return result;
     } catch (error) {

@@ -120,6 +120,7 @@ function extractCategories(toolkit: any): string[] {
 
 /**
  * Get toolkit details including auth config information
+ * IMPORTANT: Auth configs are fetched separately via authConfigs.list()
  */
 export async function getToolkitDetails(toolkitSlug: string): Promise<{
     name: string;
@@ -137,20 +138,65 @@ export async function getToolkitDetails(toolkitSlug: string): Promise<{
     }
 
     try {
-        const toolkit = await composioClient.toolkits.get(toolkitSlug);
+        console.log(`[Composio] Getting toolkit details for: ${toolkitSlug}`);
 
-        // The toolkit response has name, slug, meta (with description, logo), and authConfigDetails
+        // Get toolkit basic info
+        const toolkit = await composioClient.toolkits.get(toolkitSlug);
+        console.log('[Composio] Toolkit response:', JSON.stringify(toolkit, null, 2).substring(0, 500));
+
         const meta = (toolkit as any).meta || {};
+
+        // CRITICAL: Auth configs are fetched via authConfigs.list(), not from toolkit
+        // https://docs.composio.dev/type-script/models/auth-configs
+        console.log(`[Composio] Fetching auth configs for toolkit: ${toolkitSlug}`);
+        const authConfigsResponse = await composioClient.authConfigs.list({
+            toolkit: toolkitSlug
+        });
+
+        console.log('[Composio] Auth configs response type:', typeof authConfigsResponse);
+        console.log('[Composio] Auth configs response:', JSON.stringify(authConfigsResponse, null, 2).substring(0, 2000));
+
+        // Extract auth configs from response (handle both array and {items: []} formats)
+        let authConfigsList: any[] = [];
+        if (Array.isArray(authConfigsResponse)) {
+            authConfigsList = authConfigsResponse;
+        } else if ((authConfigsResponse as any).items) {
+            authConfigsList = (authConfigsResponse as any).items;
+        } else if ((authConfigsResponse as any).data) {
+            authConfigsList = (authConfigsResponse as any).data;
+        }
+
+        console.log(`[Composio] Found ${authConfigsList.length} auth configs for ${toolkitSlug}`);
+
+        // If no auth configs for this specific toolkit, list ALL auth configs to see what's available
+        if (authConfigsList.length === 0) {
+            console.log('[Composio] No auth configs for this toolkit, listing all...');
+            const allConfigsResponse = await composioClient.authConfigs.list();
+            const allConfigs = Array.isArray(allConfigsResponse)
+                ? allConfigsResponse
+                : (allConfigsResponse as any).items || (allConfigsResponse as any).data || [];
+
+            console.log(`[Composio] Total auth configs available: ${allConfigs.length}`);
+            console.log('[Composio] All auth configs:', JSON.stringify(allConfigs, null, 2).substring(0, 3000));
+
+            // Try to match by toolkit slug
+            authConfigsList = allConfigs.filter((config: any) => {
+                const configToolkitSlug = config.toolkit?.slug || config.toolkitSlug || config.toolkit;
+                return configToolkitSlug === toolkitSlug;
+            });
+
+            console.log(`[Composio] Matched ${authConfigsList.length} auth configs by toolkit slug`);
+        }
 
         return {
             name: toolkit.name || toolkitSlug,
             slug: toolkitSlug,
             description: meta.description || '',
             logo: meta.logo || '',
-            authConfigDetails: ((toolkit as any).authConfigDetails || []).map((config: any) => ({
-                id: config.id,
-                mode: config.mode,
-                name: config.name,
+            authConfigDetails: authConfigsList.map((config: any) => ({
+                id: config.id || config.authConfigId,
+                mode: config.mode || config.type || 'OAUTH',
+                name: config.name || config.authName || `${toolkitSlug} config`,
             })),
         };
     } catch (error) {
@@ -339,6 +385,51 @@ export function getMcpToolDefinitions(): Array<{
             required: ['action'],
         },
     }));
+}
+
+/**
+ * List all auth configs from Composio
+ * This shows what integrations the user has configured in their dashboard
+ */
+export async function listAuthConfigs(): Promise<Array<{
+    id: string;
+    toolkitSlug: string;
+    toolkitName: string;
+    name: string;
+    mode: string;
+}>> {
+    if (!composioClient) {
+        throw new Error('Composio not initialized');
+    }
+
+    try {
+        console.log('[Composio] Listing all auth configs...');
+        const response = await composioClient.authConfigs.list();
+
+        console.log('[Composio] Auth configs raw response type:', typeof response);
+        console.log('[Composio] Auth configs is array:', Array.isArray(response));
+
+        // Response structure: { items: [...], nextCursor, totalPages }
+        const configsList = (response as any).items || (response as any).data || (Array.isArray(response) ? response : []);
+
+        console.log(`[Composio] Total auth configs found: ${configsList.length}`);
+        console.log('[Composio] Auth configs:', JSON.stringify(configsList.map((c: any) => ({
+            id: c.id,
+            toolkit: c.toolkit?.slug,
+            name: c.name
+        })), null, 2));
+
+        return configsList.map((config: any) => ({
+            id: config.id,
+            toolkitSlug: config.toolkit?.slug || 'unknown',
+            toolkitName: config.toolkit?.name || config.toolkit?.slug || 'Unknown',
+            name: config.name || 'Unnamed',
+            mode: config.authScheme || config.mode || 'OAUTH',
+        }));
+    } catch (error) {
+        console.error('[Composio] Failed to list auth configs:', error);
+        throw error;
+    }
 }
 
 /**

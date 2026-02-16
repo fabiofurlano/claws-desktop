@@ -32,6 +32,15 @@ export interface ConnectedTool {
     created_at: number;
 }
 
+// Auth Config from Composio (user's configured integrations)
+export interface AuthConfig {
+    id: string;
+    toolkitSlug: string;
+    toolkitName: string;
+    name: string;
+    mode: string;
+}
+
 // Connection status from OAuth flow
 export interface ConnectionStatus {
     status: 'pending' | 'completed' | 'active' | 'failed' | 'inactive';
@@ -78,6 +87,7 @@ declare global {
                 updateConnection: (id: string, updates: { api_key?: string; is_enabled?: number }) => Promise<unknown>;
                 deleteConnection: (id: string) => Promise<unknown>;
                 listTools: (apiKey: string) => Promise<unknown[]>;
+                listAuthConfigs: () => Promise<AuthConfig[]>;
                 // NEW: Tool management
                 getConnectedTools: (connectionId?: string) => Promise<ConnectedTool[]>;
                 connectTool: (toolSlug: string) => Promise<{ redirectUrl: string | null; connectionId: string }>;

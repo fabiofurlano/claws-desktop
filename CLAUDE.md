@@ -1,7 +1,7 @@
 # CLAUDE.md - Rules for Claude Code
 
 **Purpose:** Instructions for Claude Code when building Claws Desktop App
-**Version:** 2.0
+**Version:** 2.3
 **Updated:** 2026-02-15
 
 ---
@@ -111,6 +111,45 @@ When you learn something new or fix an issue:
 - `docs/plans/providers/MCP-INTEGRATION-PLAN.md` - MCP details
 - `docs/development-log/` - Session notes
 - `CLAUDE.md` - Rules (this file)
+
+---
+
+# ⚠️ CRITICAL RULE #4: DO NOT REINVENT THE WHEEL (OPENCLAW FIRST)
+
+**We are building on OpenClaw technology.**
+
+- **Check OpenClaw docs first:** Before building custom solutions for AI agents, memory layers, or tool usage, check if OpenClaw already solves it.
+- **Use Context7:** When stuck, unsure, or in trouble regarding implementation, you **MUST** use the `mcp context7` tool to find official OpenClaw documentation.
+  - Query: `openclaw documentation <topic>`
+  - Query: `openclaw api <topic>`
+- **Do not guess:** If you don't have the context, get it.
+
+---
+
+# ⚠️ CRITICAL RULE #5: ASK WHEN UNSURE (PLANNING FIRST)
+
+**Uncertainty is dangerous.**
+
+- **Using the Definition:** If requirements are vague, **ASK**.
+- **During Planning:** Use the `ask_user_question` tool (or `notify_user` if available contextually) to confirm requirements before creating a plan.
+- **During Implementation:** If you hit a blocker or ambiguous edge case, **ASK**.
+- **Better to ask now than fix later.**
+
+---
+
+# ⚠️ CRITICAL RULE #6: UI EXCELLENCE (NO AI SLOP)
+
+**Our UI must be user-friendly, bespoke, and polished.**
+
+- **Mandatory Skill Usage:** When designing or modifying ANY UI component (CSS, React, Layouts), you **MUST** consult the Frontend Design skill at:
+  `/Users/fabiofurlano/.claude/skills/frontend-design/`
+- **Use Best Practices:** Follow the guidelines in that skill to ensure semantic HTML, accessibility (a11y), and performance.
+- **Micro-Interactions Only:** Do not over-animate. Use purposeful micro-interactions.
+- **NO GENERIC "AI SLOP":**
+  - No generic Bootstrap/Material UI clones unless specified.
+  - No unstyled or poorly spaced layouts.
+  - No "placeholder" designs.
+  - **If it looks like a template, it is wrong.**
 
 ---
 
