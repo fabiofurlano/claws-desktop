@@ -43,24 +43,65 @@ export async function listAvailableTools(apiKey?: string): Promise<Array<{
     }
 
     try {
+        console.log('[Composio] Fetching toolkits...');
+
         // Get list of available toolkits using the Composio SDK
         const response = await client.toolkits.get({});
 
-        // The response has items array with toolkit objects
-        // Each toolkit has: name, slug, meta: { logo, description, categories, ... }
-        const toolkits = (response as any).items || [];
+        console.log('[Composio] Raw response:', JSON.stringify(response, null, 2).substring(0, 500));
+
+        // The response structure might vary - try different formats
+        let toolkits: any[] = [];
+
+        if (Array.isArray(response)) {
+            // Response is directly an array
+            toolkits = response;
+        } else if ((response as any).items) {
+            // Response has items property
+            toolkits = (response as any).items;
+        } else if ((response as any).data) {
+            // Response has data property
+            toolkits = (response as any).data;
+        } else if (typeof response === 'object') {
+            // Try to extract from object keys
+            const resp = response as any;
+            toolkits = resp.toolkits || resp.results || resp.list || [];
+        }
+
+        console.log(`[Composio] Found ${toolkits.length} toolkits`);
 
         return toolkits.map((toolkit: any) => ({
-            name: toolkit.name || toolkit.slug,
+            name: toolkit.name || toolkit.displayName || toolkit.slug,
             slug: toolkit.slug,
-            description: toolkit.meta?.description || '',
-            logo: toolkit.meta?.logo || '',
-            categories: (toolkit.meta?.categories || []).map((cat: any) => cat.name || cat).filter(Boolean),
+            description: toolkit.description || toolkit.meta?.description || '',
+            logo: toolkit.logo || toolkit.meta?.logo || toolkit.meta?.logoUrl || '',
+            categories: extractCategories(toolkit),
         }));
     } catch (error) {
         console.error('[Composio] Failed to list tools:', error);
         throw error;
     }
+}
+
+/**
+ * Extract categories from toolkit object (handles different formats)
+ */
+function extractCategories(toolkit: any): string[] {
+    const cats = toolkit.categories ||
+                toolkit.meta?.categories ||
+                toolkit.category ||
+                [];
+
+    if (!Array.isArray(cats)) return [];
+
+    return cats
+        .map((cat: any) => {
+            if (typeof cat === 'string') return cat;
+            if (cat.name) return cat.name;
+            if (cat.title) return cat.title;
+            return null;
+        })
+        .filter(Boolean);
 }
 
 /**
