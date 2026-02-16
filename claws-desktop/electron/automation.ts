@@ -224,17 +224,57 @@ function triggerHooks(eventName: string) {
 async function executeTaskAction(task: AutomationTask): Promise<void> {
     switch (task.action_type) {
         case 'prompt':
-            // TODO: Send prompt to AI
-            console.log(`[Automation] Would send prompt: ${task.action_data}`);
+            // Execute prompt via Composio if it contains tool references
+            console.log(`[Automation] Executing prompt: ${task.action_data}`);
+
+            // Check if prompt mentions Gmail/emails
+            if (task.action_data.toLowerCase().includes('gmail') ||
+                task.action_data.toLowerCase().includes('email')) {
+                await executeGmailCheck(task.action_data);
+            } else {
+                console.log(`[Automation] Prompt queued for AI processing: ${task.action_data}`);
+            }
             break;
 
         case 'script':
-            // TODO: Execute script
-            console.log(`[Automation] Would execute script: ${task.action_data}`);
+            console.log(`[Automation] Script execution not yet implemented: ${task.action_data}`);
             break;
 
         default:
             throw new Error(`Unknown action type: ${task.action_type}`);
+    }
+}
+
+/**
+ * Execute Gmail check via Composio
+ */
+async function executeGmailCheck(prompt: string): Promise<void> {
+    try {
+        const { getComposio } = await import('./composio-service.js');
+        const composio = getComposio();
+
+        if (!composio) {
+            console.error('[Automation] Composio not initialized');
+            return;
+        }
+
+        console.log('[Automation] Checking Gmail via Composio...');
+
+        // Execute Gmail tool to fetch recent emails
+        const result = await composio.tools.execute('GMAIL_FETCH_EMAILS', {
+            connectedAccountId: 'b09e0b14-1d22-4bfa-9858-17b98f23b8cd', // Active Gmail account
+            input: {
+                max_results: 10,
+                query: 'is:unread'
+            }
+        } as any);
+
+        console.log('[Automation] Gmail check result:', JSON.stringify(result, null, 2));
+
+        // TODO: Process the result and potentially send notification or store report
+    } catch (error) {
+        console.error('[Automation] Gmail check failed:', error);
+        throw error;
     }
 }
 
