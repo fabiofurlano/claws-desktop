@@ -44,31 +44,45 @@ export async function listAvailableTools(apiKey?: string): Promise<Array<{
 
     try {
         console.log('[Composio] Fetching toolkits...');
+        console.log('[Composio] Client initialized:', !!client);
 
         // Get list of available toolkits using the Composio SDK
         const response = await client.toolkits.get({});
 
-        console.log('[Composio] Raw response:', JSON.stringify(response, null, 2).substring(0, 500));
+        // Log the full response type and structure
+        console.log('[Composio] Response type:', typeof response);
+        console.log('[Composio] Is array:', Array.isArray(response));
+        console.log('[Composio] Response keys:', response && typeof response === 'object' ? Object.keys(response) : 'N/A');
+        console.log('[Composio] Raw response (first 1000 chars):', JSON.stringify(response, null, 2).substring(0, 1000));
 
         // The response structure might vary - try different formats
         let toolkits: any[] = [];
 
         if (Array.isArray(response)) {
-            // Response is directly an array
+            // Response is directly an array (SDK v0.6.x format)
             toolkits = response;
+            console.log('[Composio] Response is array, length:', toolkits.length);
         } else if ((response as any).items) {
             // Response has items property
             toolkits = (response as any).items;
+            console.log('[Composio] Response has items, length:', toolkits.length);
         } else if ((response as any).data) {
             // Response has data property
             toolkits = (response as any).data;
-        } else if (typeof response === 'object') {
+            console.log('[Composio] Response has data, length:', toolkits.length);
+        } else if (typeof response === 'object' && response !== null) {
             // Try to extract from object keys
             const resp = response as any;
             toolkits = resp.toolkits || resp.results || resp.list || [];
+            console.log('[Composio] Response is object, extracted length:', toolkits.length);
         }
 
-        console.log(`[Composio] Found ${toolkits.length} toolkits`);
+        console.log(`[Composio] Final toolkits count: ${toolkits.length}`);
+
+        // Log first toolkit as sample if available
+        if (toolkits.length > 0) {
+            console.log('[Composio] Sample toolkit:', JSON.stringify(toolkits[0], null, 2).substring(0, 500));
+        }
 
         return toolkits.map((toolkit: any) => ({
             name: toolkit.name || toolkit.displayName || toolkit.slug,
@@ -333,7 +347,11 @@ export function getMcpToolDefinitions(): Array<{
 export function initComposioFromStorage(): boolean {
     try {
         const connections = getMcpConnections();
+        console.log('[Composio] Found connections:', connections.length);
+        console.log('[Composio] Connection details:', JSON.stringify(connections, null, 2));
+
         const composioConn = connections.find(c => c.type === 'composio' && c.is_enabled && c.api_key);
+        console.log('[Composio] Matched connection:', composioConn ? 'yes' : 'no');
 
         if (composioConn?.api_key) {
             initComposio(composioConn.api_key);
