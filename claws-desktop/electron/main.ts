@@ -18,6 +18,7 @@ import {
     searchSkills,
 } from './skills-registry';
 import { startMcpServer, stopMcpServer } from './mcp-server.js';
+import { initAutomation, createTask, listTasks, toggleTask, deleteTask, triggerEvent, stopAllJobs } from './automation';
 
 // In CommonJS, __dirname is automatically available
 
@@ -58,6 +59,9 @@ app.whenReady().then(async () => {
     // Initialize SQLite database
     initDatabase();
 
+    // Initialize automation system (cron scheduler and hooks)
+    initAutomation();
+
     // Start MCP server for OpenClaw connection
     try {
         await startMcpServer();
@@ -66,6 +70,9 @@ app.whenReady().then(async () => {
     }
 
     createWindow();
+
+    // Trigger app:startup event after window is ready
+    setTimeout(() => triggerEvent('app:startup'), 1000);
 
     app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) {
@@ -81,6 +88,7 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', async () => {
+    stopAllJobs();
     await stopMcpServer();
     closeDatabase();
 });
@@ -313,4 +321,26 @@ ipcMain.handle('mcp:disableTool', async (_event, toolId: string) => {
 // Remove connected tool
 ipcMain.handle('mcp:removeTool', async (_event, toolId: string) => {
     return removeConnectedTool(toolId);
+});
+
+// IPC handlers — Automation
+ipcMain.handle('automation:list', async () => {
+    return listTasks();
+});
+
+ipcMain.handle('automation:create', async (_event, task: any) => {
+    return createTask(task);
+});
+
+ipcMain.handle('automation:toggle', async (_event, id: string) => {
+    return toggleTask(id);
+});
+
+ipcMain.handle('automation:delete', async (_event, id: string) => {
+    return deleteTask(id);
+});
+
+// Listen for open-automation-dashboard event
+ipcMain.on('open-automation-dashboard', () => {
+    mainWindow?.webContents.send('show-automation-dashboard');
 });
