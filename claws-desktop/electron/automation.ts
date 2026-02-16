@@ -262,7 +262,8 @@ async function executeGmailCheck(prompt: string): Promise<void> {
 
         // Execute Gmail tool to fetch recent emails
         const result = await composio.tools.execute('GMAIL_FETCH_EMAILS', {
-            connectedAccountId: 'b09e0b14-1d22-4bfa-9858-17b98f23b8cd', // Active Gmail account
+            connectedAccountId: 'b09e0b14-1d22-4bfa-9858-17b98f23b8cd',
+            version: 'v1.0',
             input: {
                 max_results: 10,
                 query: 'is:unread'
