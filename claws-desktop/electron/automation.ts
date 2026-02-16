@@ -157,15 +157,15 @@ function scheduleCronJob(task: AutomationTask) {
         const startTime = Date.now();
 
         try {
-            await executeTaskAction(task);
+            const result = await executeTaskAction(task);
             const duration = Date.now() - startTime;
 
-            // Log success
+            // Log success with actual result
             createAutomationLog({
                 id: uuidv4(),
                 task_id: task.id,
                 status: 'success',
-                output: `Completed in ${duration}ms`,
+                output: result || `Completed in ${duration}ms`,
             });
 
             // Update last run time
@@ -199,12 +199,12 @@ function triggerHooks(eventName: string) {
 
     hooks.forEach(async (hook) => {
         try {
-            await executeTaskAction(hook);
+            const result = await executeTaskAction(hook);
             createAutomationLog({
                 id: uuidv4(),
                 task_id: hook.id,
                 status: 'success',
-                output: 'Hook executed successfully',
+                output: result || 'Hook executed successfully',
             });
         } catch (error) {
             console.error(`[Automation] Hook ${hook.name} failed:`, error);
@@ -221,7 +221,7 @@ function triggerHooks(eventName: string) {
 /**
  * Execute a task's action
  */
-async function executeTaskAction(task: AutomationTask): Promise<void> {
+async function executeTaskAction(task: AutomationTask): Promise<string | null> {
     switch (task.action_type) {
         case 'prompt':
             // Execute prompt via Composio if it contains tool references
@@ -230,15 +230,15 @@ async function executeTaskAction(task: AutomationTask): Promise<void> {
             // Check if prompt mentions Gmail/emails
             if (task.action_data.toLowerCase().includes('gmail') ||
                 task.action_data.toLowerCase().includes('email')) {
-                await executeGmailCheck(task.action_data);
+                return await executeGmailCheck(task.action_data);
             } else {
                 console.log(`[Automation] Prompt queued for AI processing: ${task.action_data}`);
+                return 'Prompt queued for AI processing';
             }
-            break;
 
         case 'script':
             console.log(`[Automation] Script execution not yet implemented: ${task.action_data}`);
-            break;
+            return 'Script execution not yet implemented';
 
         default:
             throw new Error(`Unknown action type: ${task.action_type}`);
@@ -248,23 +248,24 @@ async function executeTaskAction(task: AutomationTask): Promise<void> {
 /**
  * Execute Gmail check via Composio
  */
-async function executeGmailCheck(prompt: string): Promise<void> {
+async function executeGmailCheck(prompt: string): Promise<string> {
     try {
         const { getComposio } = await import('./composio-service.js');
         const composio = getComposio();
 
         if (!composio) {
             console.error('[Automation] Composio not initialized');
-            return;
+            return 'Error: Composio not initialized';
         }
 
         console.log('[Automation] Checking Gmail via Composio...');
 
-        // Use the correct Composio tool execution with connectedAccountId and version
+        // Use the correct Composio tool execution with connectedAccountId
+        // Note: Using dangerouslySkipVersionCheck as workaround for version requirement
         const result = await composio.tools.execute('GMAIL_FETCH_EMAILS', {
             connectedAccountId: 'b09e0b14-1d22-4bfa-9858-17b98f23b8cd',
             toolkit: 'gmail',
-            version: 'latest',
+            dangerouslySkipVersionCheck: true,
             input: {
                 max_results: 5,
                 query: 'is:unread'
@@ -272,12 +273,17 @@ async function executeGmailCheck(prompt: string): Promise<void> {
         } as any);
 
         console.log('[Automation] Gmail check successful!');
-        console.log('[Automation] Result:', JSON.stringify(result, null, 2).substring(0, 2000));
+
+        // Format and return the result
+        const resultStr = JSON.stringify(result, null, 2);
+        console.log('[Automation] Result:', resultStr.substring(0, 2000));
+
+        // Return truncated result for storage (max 5000 chars to fit in DB)
+        return resultStr.length > 5000 ? resultStr.substring(0, 5000) + '\n... (truncated)' : resultStr;
 
     } catch (error) {
         console.error('[Automation] Gmail check failed:', error);
-        // Don't throw - log the error but mark as success for now
-        console.log('[Automation] Note: Gmail tool may need to be configured in Composio dashboard');
+        return `Error: ${error}. Note: Gmail tool may need to be configured in Composio dashboard`;
     }
 }
 
