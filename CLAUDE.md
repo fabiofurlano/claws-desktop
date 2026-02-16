@@ -1,8 +1,8 @@
 # CLAUDE.md - Rules for Claude Code
 
 **Purpose:** Instructions for Claude Code when building Claws Desktop App
-**Version:** 2.3
-**Updated:** 2026-02-15
+**Version:** 2.4
+**Updated:** 2026-02-16
 
 ---
 
@@ -150,6 +150,49 @@ When you learn something new or fix an issue:
   - No unstyled or poorly spaced layouts.
   - No "placeholder" designs.
   - **If it looks like a template, it is wrong.**
+
+---
+
+# 🧠 BEHAVIORAL GUIDELINES (REDUCE MISTAKES)
+
+**Guidelines to reduce common LLM coding mistakes. Bias toward caution over speed.**
+
+## 1. Think Before Coding
+**Don't assume. Don't hide confusion. Surface tradeoffs.**
+- State your assumptions explicitly. If uncertain, ask.
+- If multiple interpretations exist, present them - don't pick silently.
+- If a simpler approach exists, say so. Push back when warranted.
+- If something is unclear, stop. Name what's confusing. Ask.
+
+## 2. Simplicity First
+**Minimum code that solves the problem. Nothing speculative.**
+- No features beyond what was asked.
+- No abstractions for single-use code.
+- No "flexibility" or "configurability" that wasn't requested.
+- No error handling for impossible scenarios.
+- If you write 200 lines and it could be 50, rewrite it.
+- **Test:** "Would a senior engineer say this is overcomplicated?" If yes, simplify.
+
+## 3. Surgical Changes
+**Touch only what you must. Clean up only your own mess.**
+- **Don't** "improve" adjacent code, comments, or formatting unless asked.
+- **Don't** refactor things that aren't broken.
+- Match existing style, even if you'd do it differently.
+- **Orphans:** Remove imports/variables YOU made unused. Don't remove pre-existing dead code unless asked.
+- **Test:** Every changed line should trace directly to the user's request.
+
+## 4. Goal-Driven Execution
+**Define success criteria. Loop until verified.**
+- **Validation:** "Write tests for invalid inputs, then make them pass"
+- **Bug Fix:** "Write a test that reproduces it, then make it pass"
+- **Refactor:** "Ensure tests pass before and after"
+
+**Plan Format:**
+```
+1. [Step] → verify: [check]
+2. [Step] → verify: [check]
+3. [Step] → verify: [check]
+```
 
 ---
 
