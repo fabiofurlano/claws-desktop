@@ -6,12 +6,14 @@ import { ChatMode } from './components/ChatMode';
 import { AgentMode } from './components/AgentMode';
 import { SettingsPage } from './components/SettingsPage';
 import { OnboardingWizard } from './components/OnboardingWizard';
+import { AutomationDashboard } from './components/AutomationDashboard';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 
 export function App() {
     const mode = useMode();
     const { toggleMode } = useModeActions();
     const [showSettings, setShowSettings] = useState(false);
+    const [showAutomation, setShowAutomation] = useState(false);
     const [showOnboarding, setShowOnboarding] = useState(() => {
         return !localStorage.getItem('claws_onboarding_completed');
     });
@@ -21,6 +23,14 @@ export function App() {
     useEffect(() => {
         initAgentStore();
     }, [initAgentStore]);
+
+    // Listen for IPC event to show Automation Dashboard
+    useEffect(() => {
+        const unsubscribe = window.electron.on('show-automation-dashboard', () => {
+            setShowAutomation(true);
+        });
+        return unsubscribe;
+    }, []);
 
     const handleToggleMode = useCallback(() => {
         toggleMode();
@@ -119,6 +129,9 @@ export function App() {
 
             {/* Settings Modal */}
             {showSettings && <SettingsPage onClose={() => setShowSettings(false)} />}
+
+            {/* Automation Dashboard */}
+            {showAutomation && <AutomationDashboard onClose={() => setShowAutomation(false)} />}
 
             {/* Onboarding Wizard */}
             {showOnboarding && <OnboardingWizard onComplete={() => setShowOnboarding(false)} />}
