@@ -4,7 +4,7 @@ import { DEFAULT_PROVIDERS, testProviderConnection } from '../utils/aiProvider';
 import { useMode } from '../stores/mode-store';
 import { McpSettings } from './McpSettings';
 
-type SettingsTab = 'providers' | 'mcp' | 'appearance' | 'data' | 'about';
+type SettingsTab = 'providers' | 'mcp' | 'agent-config' | 'agent-skills' | 'appearance' | 'data' | 'about';
 
 // Model suggestions per provider type
 const MODEL_SUGGESTIONS: Record<string, { models: string[]; hint: string }> = {
@@ -48,6 +48,8 @@ export function SettingsPage({ onClose }: { onClose: () => void }) {
     const tabs: { id: SettingsTab; label: string; icon: string }[] = [
         { id: 'providers', label: 'Providers', icon: '#' },
         { id: 'mcp', label: 'MCP', icon: '~' },
+        { id: 'agent-config', label: 'Agent', icon: '🤖' },
+        { id: 'agent-skills', label: 'Skills', icon: '⚡' },
         { id: 'appearance', label: 'Appearance', icon: '*' },
         { id: 'data', label: 'Data', icon: '+' },
         { id: 'about', label: 'About', icon: 'i' },
@@ -106,6 +108,8 @@ export function SettingsPage({ onClose }: { onClose: () => void }) {
                     <div className="flex-1 overflow-y-auto p-6">
                         {activeTab === 'providers' && <ProvidersTab />}
                         {activeTab === 'mcp' && <McpSettings isAgent={isAgent} />}
+                        {activeTab === 'agent-config' && <AgentConfigTab isAgent={isAgent} />}
+                        {activeTab === 'agent-skills' && <AgentSkillsTab isAgent={isAgent} />}
                         {activeTab === 'appearance' && <AppearanceTab />}
                         {activeTab === 'data' && <DataTab />}
                         {activeTab === 'about' && <AboutTab />}
@@ -519,6 +523,125 @@ function AboutTab() {
                     <p>• <strong>Agent Mode:</strong> Full memory and learning</p>
                     <p className="pt-2">Open source • MIT License</p>
                 </div>
+            </div>
+        </div>
+    );
+}
+
+// ==================== Agent Config Tab ====================
+
+function AgentConfigTab({ isAgent }: { isAgent: boolean }) {
+    const [systemPrompt, setSystemPrompt] = useState('You are a helpful AI assistant. Be concise, accurate, and friendly.');
+    const [personality, setPersonality] = useState('Professional');
+
+    const handleOpenAutomation = () => {
+        window.electron.send('open-automation-dashboard');
+    };
+
+    return (
+        <div className="space-y-6">
+            <div>
+                <h3 className={`text-base font-semibold ${isAgent ? 'text-agent-text' : 'text-chat-text'}`}>
+                    Agent Configuration
+                </h3>
+                <p className={`text-sm ${isAgent ? 'text-agent-muted' : 'text-chat-muted'}`}>
+                    Customize how your agent behaves
+                </p>
+            </div>
+
+            {/* System Prompt */}
+            <div>
+                <label className={`block text-sm font-medium ${isAgent ? 'text-agent-text' : 'text-chat-text'}`}>
+                    System Prompt
+                </label>
+                <textarea
+                    value={systemPrompt}
+                    onChange={(e) => setSystemPrompt(e.target.value)}
+                    className={`w-full mt-1.5 px-3 py-2 rounded-lg text-sm border outline-none transition-all min-h-[150px] font-mono
+                        ${isAgent
+                            ? 'bg-agent-bg border-agent-border text-agent-text placeholder:text-agent-muted/40 focus:border-agent-primary'
+                            : 'bg-white border-chat-border text-chat-text placeholder:text-chat-muted/40 focus:border-chat-primary'
+                        }`}
+                    placeholder="You are a helpful assistant..."
+                />
+                <p className={`mt-1 text-xs ${isAgent ? 'text-agent-muted' : 'text-chat-muted'}`}>
+                    {systemPrompt.length} characters
+                </p>
+            </div>
+
+            {/* Personality Preset */}
+            <div>
+                <label className={`block text-sm font-medium mb-2 ${isAgent ? 'text-agent-text' : 'text-chat-text'}`}>
+                    Personality Preset
+                </label>
+                <div className="flex gap-2">
+                    {['Professional', 'Creative', 'Casual'].map((preset) => (
+                        <button
+                            key={preset}
+                            onClick={() => setPersonality(preset)}
+                            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all
+                                ${personality === preset
+                                    ? isAgent
+                                        ? 'bg-agent-primary text-white'
+                                        : 'bg-chat-primary text-white'
+                                    : isAgent
+                                        ? 'bg-agent-surfaceAlt text-agent-muted hover:text-agent-text'
+                                        : 'bg-gray-100 text-chat-muted hover:text-chat-text'
+                                }`}
+                        >
+                            {preset}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {/* Automation Dashboard Link */}
+            <div className="pt-4 border-t border-dashed">
+                <button
+                    onClick={handleOpenAutomation}
+                    className={`w-full px-4 py-3 rounded-lg text-sm font-medium transition-all flex items-center justify-between
+                        ${isAgent
+                            ? 'bg-agent-surfaceAlt text-agent-text hover:bg-agent-surface border border-agent-border'
+                            : 'bg-gray-50 text-chat-text hover:bg-gray-100 border border-chat-border'
+                        }`}
+                >
+                    <span>⚙️ Open Automation Dashboard</span>
+                    <span>→</span>
+                </button>
+                <p className={`mt-2 text-xs ${isAgent ? 'text-agent-muted' : 'text-chat-muted'}`}>
+                    Schedule tasks and set up event hooks
+                </p>
+            </div>
+        </div>
+    );
+}
+
+// ==================== Agent Skills Tab ====================
+
+function AgentSkillsTab({ isAgent }: { isAgent: boolean }) {
+    return (
+        <div className="space-y-4">
+            <div>
+                <h3 className={`text-base font-semibold ${isAgent ? 'text-agent-text' : 'text-chat-text'}`}>
+                    Skills
+                </h3>
+                <p className={`text-sm ${isAgent ? 'text-agent-muted' : 'text-chat-muted'}`}>
+                    Manage agent capabilities and MCP tools
+                </p>
+            </div>
+
+            {/* Placeholder - Skills will be integrated from SkillsBrowser */}
+            <div className={`rounded-xl border p-8 text-center ${isAgent ? 'border-agent-border bg-agent-surfaceAlt' : 'border-chat-border bg-gray-50'}`}>
+                <div className="text-4xl mb-3">⚡</div>
+                <p className={`font-medium ${isAgent ? 'text-agent-text' : 'text-chat-text'}`}>
+                    Skills Management
+                </p>
+                <p className={`text-sm mt-2 ${isAgent ? 'text-agent-muted' : 'text-chat-muted'}`}>
+                    Browse and enable skills from the MCP tab above, or use the Skills Browser.
+                </p>
+                <p className={`text-xs mt-4 ${isAgent ? 'text-agent-muted/60' : 'text-chat-muted/60'}`}>
+                    Full skills integration coming soon
+                </p>
             </div>
         </div>
     );
